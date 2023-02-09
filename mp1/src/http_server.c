@@ -16,8 +16,10 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#define PORT "3490"  // the port users will be connecting to
 #define BACKLOG 10	 // how many pending connections queue will hold
+#define MAX_REQUEST_LEN 1024
+#define MAX_FILENAME_LEN 256
+#define RESPONSE_HEADER_LEN 32
 
 
 void sigchld_handler(int s)
@@ -36,54 +38,48 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 
-int main(int argc, char *argv[])
+char* read_file(const char *filename)
 {
-
-	if (argc != 2) {
-		fprintf(stderr, "File Name not specified\n");
-		return 1;
+	FILE *fptr = fopen(filename, "r");
+	if (fptr == NULL) {
+		printf("Cannot open file\n");
+		return NULL;
 	}
 
-	int sockfd, new_fd, rv, yes = 1;
+	fseek(fptr, 0, SEEK_END);
+	unsigned long len = (unsigned long)ftell(fptr);
+	fseek(fptr, 0, SEEK_SET);
+	char *content = malloc(len + 1);
+	fread(content, len, 1, fptr);
+	content[len] = 0;
+	fclose(fptr);
+
+	return content;
+}
+
+
+int main(int argc, char *argv[])
+{
+	int sockfd, new_fd, rv, yes = 1;  // listen on sock_fd, new connection on new_fd
 	char addr[INET6_ADDRSTRLEN];
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_storage their_addr; // connector's address information
 	socklen_t sin_size;
 	struct sigaction sa;
 
-	FILE *fptr = fopen(argv[1], "r");
-	fseek(fptr, 0, SEEK_END);
-	unsigned long len = (unsigned long)ftell(fptr);
-	fseek(fptr, 0, SEEK_SET);
-
-	char *string = malloc(len + 1);
-	fread(string, len, 1, fptr);
-	string[len] = 0;
-
-	const int n_temp = snprintf(NULL, 0, "%lu", len);
-	assert(n_temp > 0);
-	char buf_temp[n_temp + 1];
-	int c_temp = snprintf(buf_temp, n_temp + 1, "%lu", len);
-	assert(buf_temp[n_temp] == '\0');
-	assert(c_temp == n_temp);
-
-	if (fptr == NULL) {
-		printf("Cannot open file\n");
+	if (argc != 2) {
+		fprintf(stderr, "Port number not specified\n");
 		return 1;
 	}
-
-	fclose(fptr);
-
-	char* result = concat(buf_temp,"\n\n\n", &string[0]);
 
 	/* bind to socket */
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
+	hints.ai_flags = AI_PASSIVE; // use my IP
 
-	if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(NULL, argv[1], &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return 1;
 	}
@@ -96,7 +92,7 @@ int main(int argc, char *argv[])
 		}
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
 			perror("setsockopt");
-			exit(1);
+			return 1;
 		}
 		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
 			close(sockfd);
@@ -116,7 +112,7 @@ int main(int argc, char *argv[])
 
 	if (listen(sockfd, BACKLOG) == -1) {
 		perror("listen");
-		exit(1);
+		return 1;
 	}
 
 	sa.sa_handler = sigchld_handler;
@@ -124,7 +120,7 @@ int main(int argc, char *argv[])
 	sa.sa_flags = SA_RESTART;
 	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
 		perror("sigaction");
-		exit(1);
+		return 1;
 	}
 
 	printf("server: waiting for connections...\n");
@@ -142,10 +138,71 @@ int main(int argc, char *argv[])
 
 		if (!fork()) { // this is the child process
 			close(sockfd); // child doesn't need the listener
-			if (send(new_fd, result, strlen(result), 0) == -1)
+
+			/*  HTTP-compatible server
+			
+				Request format:
+					GET /<filename> HTTP/1.1\r\r
+
+				Response format:
+					HTTP/1.1 <statcode> <statmsg>\r\r<content>
+			*/
+
+			char request[MAX_REQUEST_LEN];
+			char filename[MAX_FILENAME_LEN];
+			char response_header[RESPONSE_HEADER_LEN];
+			char *response;
+			int valid = 1;
+
+			recv(new_fd, request, MAX_REQUEST_LEN, 0);
+
+			// check if request starts with "GET /"
+			if (strncmp(request, "GET /", 5) != 0) {
+				valid = 0;
+				strcpy(response_header, "HTTP/1.1 400 Bad Request\r\r");
+				goto READY_FOR_RESPONSE;
+			} else {
+				request += 5 * sizeof(char);
+			}
+
+			// extract filename from request
+			int space_pos = strcspn(request, " ");
+			strncpy(filename, request, space_pos);
+			filename[space_pos] = 0;
+			request += space_pos * sizeof(char);
+
+			// check if request ends with " HTTP/1.1\r\r"
+			if (strncmp(request, " HTTP/1.1\r\r", 11) != 0) {
+				valid = 0;
+				strcpy(response_header, "HTTP/1.1 400 Bad Request\r\r");
+				goto READY_FOR_RESPONSE;
+			}
+
+			char *content = read_file(filename);
+			if (!content) {
+				valid = 0;
+				strcpy(response_header, "HTTP/1.1 404 Not Found\r\r");
+			} else {
+				strcpy(response_header, "HTTP/1.1 200 OK\r\r");
+			}
+
+READY_FOR_RESPONSE:
+			if (valid) {
+				response = malloc(strlen(response_header) + strlen(content) + 1);
+				strcpy(response, response_header);
+				strcat(response, content);
+			} else {
+				response = malloc(strlen(response_header) + 1);
+				strcpy(response, response_header);
+			}
+
+			if (send(new_fd, response, strlen(response), 0) == -1)
 				perror("send");
+
+			/* HTTP-compatible server END */
+
 			close(new_fd);
-			exit(0);
+			return 0;
 		}
 		close(new_fd);  // parent doesn't need this
 	}
