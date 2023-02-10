@@ -74,8 +74,6 @@ int main(int argc, char *argv[])
 	arg = &arg[slash_pos];
 	strcpy(filename, arg);
 
-	printf("%s\n", filename);
-
 	/* bind to socket */
 
 	memset(&hints, 0, sizeof hints);
@@ -137,6 +135,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	response[numbytes] = '\0';
+	printf("client: received %d bytes\n", numbytes);
 
 	// parse response
 	char* content = strstr(response, "\r\n\r\n");
@@ -150,7 +149,7 @@ int main(int argc, char *argv[])
 		perror("fopen");
 		return 1;
 	}
-	fwrite(content, 1, strlen(content), fp);
+	fwrite(content, 1, numbytes - (content - response) - 1, fp);
 	fclose(fp);
 
 	close(sockfd);
