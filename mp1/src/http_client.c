@@ -122,11 +122,18 @@ int main(int argc, char *argv[])
 	}
 
 	char response[MAX_RESPONSE_LEN];
-	if ((numbytes = recv(sockfd, response, MAX_RESPONSE_LEN-1, 0)) == -1) {
-		perror("recv");
-		return 1;
+	char *response_ptr = response;
+	int file_size = 0;
+
+	while ((numbytes = recv(sockfd, response_ptr, MAX_RESPONSE_LEN-1, 0)) > 0) {
+		if (numbytes == -1) {
+			perror("recv");
+			return 1;
+		}
+		response_ptr = &response_ptr[numbytes];
+		file_size += numbytes;
 	}
-	printf("client: received %d bytes\n", numbytes);
+	printf("client: received %d bytes\n", file_size);
 
 	// parse response
 	char* content = strstr(response, "\r\n\r\n");
@@ -140,7 +147,7 @@ int main(int argc, char *argv[])
 		perror("fopen");
 		return 1;
 	}
-	fwrite(content, 1, numbytes - (content - response) - 1, fp);
+	fwrite(content, 1, file_size - (content - response), fp);
 	fclose(fp);
 
 	close(sockfd);
