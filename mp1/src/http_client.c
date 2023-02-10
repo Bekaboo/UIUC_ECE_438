@@ -18,7 +18,7 @@
 #define MAX_PORT_LEN 8
 #define MAX_FILENAME_LEN 256
 #define MAX_REQUEST_LEN 1024
-#define MAX_RESPONSE_LEN 1048576
+#define MAX_RESPONSE_LEN 4194304
 #define DEFAULT_PORT "80"
 
 // get sockaddr, IPv4 or IPv6:
