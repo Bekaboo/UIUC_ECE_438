@@ -1,14 +1,12 @@
 test results:
 
--25:  TEST 1: wget small file from your server failed: received file had an error.
-
--25:  TEST 2: the medium-sized file your client gets has error.
-
--25:  TEST 3: concurrency failed: one or more small files not retrieved
+ TEST 1: wget small file from your server succeeded!
+ TEST 2: your client getting file from your server succeeded!
+-25:  TEST 3: concurrency failed: very large file not correctly downloaded
 ====================
 
-version:2
-score: 25/100
-all-time best score (your current grade): 25/100
+version:3
+score: 75/100
+all-time best score (your current grade): 75/100
 
 
