@@ -20,7 +20,7 @@
 #define MAX_REQUEST_LEN 1024
 #define MAX_FILENAME_LEN 256
 #define MAX_RESPONSE_HEADER_LEN 32
-#define MAX_CONTENT_LEN 4194304
+#define MAX_SEGMENT_LEN 4194304  // requested file is read and sent in 4MB segments
 
 
 void sigchld_handler(int s)
@@ -36,24 +36,6 @@ void *get_in_addr(struct sockaddr *sa)
 		return &(((struct sockaddr_in *)sa)->sin_addr);
 	}
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
-}
-
-
-int read_file(char *content, const char *filename)
-{
-	FILE *fptr = fopen(filename, "r");
-	if (fptr == NULL) {
-		printf("Cannot open file\n");
-		return -1;
-	}
-
-	fseek(fptr, 0, SEEK_END);
-	unsigned long len = (unsigned long)ftell(fptr);
-	fseek(fptr, 0, SEEK_SET);
-	fread(content, len, 1, fptr);
-	fclose(fptr);
-
-	return len;
 }
 
 
@@ -150,17 +132,17 @@ int main(int argc, char *argv[])
 			char request[MAX_REQUEST_LEN];
 			char filename[MAX_FILENAME_LEN];
 			char response_header[MAX_RESPONSE_HEADER_LEN];
-			char *request_ptr = request, *response;
-			int response_len, valid = 1;
+			char segment[MAX_SEGMENT_LEN];
+			char *request_ptr = request;
+			int segment_len, file_len = 0;
 
 			recv(new_fd, request, MAX_REQUEST_LEN, 0);
 			printf("server: received request '''\n%s\n'''\n", request);
 
-			// check if request starts with "GET /"
+			// check request prefix
 			if (strncmp(request_ptr, "GET /", 5) != 0) {
-				valid = 0;
 				strcpy(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
-				goto READY_FOR_RESPONSE;
+				goto ABNORMAL_RESPONSE;
 			} else {
 				request_ptr = &request_ptr[5];
 			}
@@ -171,45 +153,44 @@ int main(int argc, char *argv[])
 			filename[space_pos] = '\0';
 			request_ptr = &request_ptr[space_pos];
 
-			// check if THE FIRST LINE OF request ends with " HTTP/1.1\r\n"
+			// check request suffix (FIRST LINE)
 			if (strncmp(request_ptr, " HTTP/1.1\r\n", 9) != 0) {
-				valid = 0;
 				strcpy(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
-				goto READY_FOR_RESPONSE;
+				goto ABNORMAL_RESPONSE;
 			}
 
-			char content[MAX_CONTENT_LEN];
-			int file_len = read_file(content, filename);
-			if (file_len == -1) {
-				valid = 0;
+			// open requested file
+			FILE *fptr = fopen(filename, "r");
+			if (fptr == NULL) {
 				strcpy(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
+				goto ABNORMAL_RESPONSE;
 			} else {
 				strcpy(response_header, "HTTP/1.1 200 OK\r\n\r\n");
 			}
 
-READY_FOR_RESPONSE:
-			if (valid) {
-				response_len = strlen(response_header) + file_len;
-				response = malloc(response_len);
-				strcpy(response, response_header);
-				// not using library functions here since...
-				// both strcat and strncat stop copying at NUL
-				for (int i = 0; i < file_len; i++) {
-					response[strlen(response_header) + i] = content[i];
-				}
-			} else {
-				response_len = strlen(response_header);
-				response = malloc(response_len);
-				strcpy(response, response_header);
-			}
-
-			printf("server: sending %d bytes\n", response_len);
+			// send response header
 			printf("server: sending response header '''\n%s\n'''\n", response_header);
-			if (send(new_fd, response, response_len, 0) == -1)
+			if (send(new_fd, response_header, strlen(response_header), 0) == -1)
+				perror("send");
+
+			// read and send requested file in segments
+			while ((segment_len = fread(segment, 1, MAX_SEGMENT_LEN, fptr))) {
+				file_len += segment_len;
+				if (send(new_fd, segment, segment_len, 0) == -1)
+					perror("send");
+			}
+			fclose(fptr);
+			printf("server: sent %d bytes of file\n", file_len);
+			goto RESPONSE_SENT;
+
+ABNORMAL_RESPONSE:
+			printf("server: sending response header '''\n%s\n'''\n", response_header);
+			if (send(new_fd, response_header, strlen(response_header), 0) == -1)
 				perror("send");
 
 			/* HTTP-compatible server END */
 
+RESPONSE_SENT:
 			close(new_fd);
 			return 0;
 		}
