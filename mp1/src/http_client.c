@@ -17,8 +17,9 @@
 #define MAX_HOSTNAME_LEN 256
 #define MAX_PORT_LEN 8
 #define MAX_FILENAME_LEN 256
-#define MAX_REQUEST_LEN 512
+#define MAX_REQUEST_LEN 1024
 #define MAX_RESPONSE_LEN 1048576
+#define DEFAULT_PORT "80"
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -48,7 +49,7 @@ int main(int argc, char *argv[])
 	char filename[MAX_FILENAME_LEN];
 	char *arg = argv[1];
 
-	if strncmp(arg, "http://", 7) != 0 {
+	if (strncmp(arg, "http://", 7) != 0) {
 		fprintf(stderr, "Not a valid URL\n");
 		return 1;
 	} else {
@@ -56,22 +57,32 @@ int main(int argc, char *argv[])
 	}
 
 	int colon_pos = strcspn(arg, ":");
-	strncpy(hostname, arg, colon_pos);
-	hostname[colon_pos] = '\0';
-	arg = &arg[colon_pos + 1];
-
 	int slash_pos = strcspn(arg, "/");
-	strncpy(port, arg, slash_pos);
-	port[slash_pos] = '\0';
-	arg = &arg[slash_pos + 1];
+	if (colon_pos == strlen(arg)) {
+		strncpy(hostname, arg, slash_pos);
+		hostname[slash_pos] = '\0';
+		strcpy(port, DEFAULT_PORT);
+	} else {
+		slash_pos -= colon_pos + 1;
+		strncpy(hostname, arg, colon_pos);
+		hostname[colon_pos] = '\0';
+		arg = &arg[colon_pos + 1];
+		strncpy(port, arg, slash_pos);
+		port[slash_pos] = '\0';
+	}
 
+	arg = &arg[slash_pos];
 	strcpy(filename, arg);
+
+	printf("%s\n", filename);
 
 	/* bind to socket */
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
+
+	printf("client: hostname is '%s' on port %s\n", hostname, port);
 
 	if ((rv = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
@@ -105,8 +116,16 @@ int main(int argc, char *argv[])
 
 	// send request
 	char request[MAX_REQUEST_LEN];
-	sprintf(request, "GET /%s HTTP/1.1\r\n\r\n", filename);
-	printf("client: sending '%s'\n", request);
+// 	sprintf(request, "\
+// GET %s HTTP/1.1\r\n\
+// User-Agent: Wget/1.20.3 (linux-gnu)\r\n\
+// Accept: */*\r\n\
+// Accept-Encoding: identity\r\n\
+// Host: %s\r\n\
+// Connection: Keep-Alive\r\n\
+// \r\n", filename, hostname);
+	sprintf(request, "GET %s HTTP/1.1\r\n\r\n", filename);
+	printf("client: sending request '''\n%s'''\n", request);
 	if (send(sockfd, request, strlen(request), 0) == -1) {
 		perror("send");
 		return 1;
@@ -117,13 +136,13 @@ int main(int argc, char *argv[])
 		perror("recv");
 		return 1;
 	}
-	buf[numbytes] = '\0';
+	response[numbytes] = '\0';
 
 	// parse response
-	int content_ptr = strcspn(response, "\r\n\r\n");
-	response[content_ptr] = '\0';
-	printf("client: received '%s'\n", response);
-	char *content = &response[content_ptr + 4];
+	char* content = strstr(response, "\r\n\r\n");
+	*content = '\0';
+	content = &content[4];
+	printf("client: received response header '''\n%s\n'''\n", response);
 
 	// write response to file
 	FILE *fp = fopen("output", "w");
