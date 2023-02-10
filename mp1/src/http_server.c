@@ -155,6 +155,7 @@ int main(int argc, char *argv[])
 			int response_len, valid = 1;
 
 			recv(new_fd, request, MAX_REQUEST_LEN, 0);
+			printf("server: received request '''\n%s\n'''\n", request);
 
 			// check if request starts with "GET /"
 			if (strncmp(request_ptr, "GET /", 5) != 0) {
@@ -171,8 +172,8 @@ int main(int argc, char *argv[])
 			filename[space_pos] = '\0';
 			request_ptr = &request_ptr[space_pos];
 
-			// check if request ends with " HTTP/1.1\r\n\r\n"
-			if (strncmp(request_ptr, " HTTP/1.1\r\n\r\n", 11) != 0) {
+			// check if THE FIRST LINE OF request ends with " HTTP/1.1\r\n"
+			if (strncmp(request_ptr, " HTTP/1.1\r\n", 9) != 0) {
 				valid = 0;
 				strcpy(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
 				goto READY_FOR_RESPONSE;
@@ -189,7 +190,7 @@ int main(int argc, char *argv[])
 
 READY_FOR_RESPONSE:
 			if (valid) {
-				response_len = strlen(response_header) + file_len + 1;
+				response_len = strlen(response_header) + file_len;
 				response = malloc(response_len);
 				strcpy(response, response_header);
 				// not using library functions here since...
@@ -197,13 +198,14 @@ READY_FOR_RESPONSE:
 				for (int i = 0; i < file_len; i++) {
 					response[strlen(response_header) + i] = content[i];
 				}
-				response[response_len - 1] = '\0';
 			} else {
-				response_len = strlen(response_header) + 1;
+				response_len = strlen(response_header);
 				response = malloc(response_len);
 				strcpy(response, response_header);
 			}
 
+			printf("server: sending %d bytes\n", response_len);
+			printf("server: sending response header '''\n%s\n'''\n", response_header);
 			if (send(new_fd, response, response_len, 0) == -1)
 				perror("send");
 
