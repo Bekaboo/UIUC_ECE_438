@@ -19,7 +19,8 @@
 #define BACKLOG 10	 // how many pending connections queue will hold
 #define MAX_REQUEST_LEN 1024
 #define MAX_FILENAME_LEN 256
-#define RESPONSE_HEADER_LEN 32
+#define MAX_RESPONSE_HEADER_LEN 32
+#define MAX_CONTENT_LEN 1048544
 
 
 void sigchld_handler(int s)
@@ -38,23 +39,22 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 
-char* read_file(const char *filename)
+int read_file(char *content, const char *filename)
 {
 	FILE *fptr = fopen(filename, "r");
 	if (fptr == NULL) {
 		printf("Cannot open file\n");
-		return NULL;
+		return -1;
 	}
 
 	fseek(fptr, 0, SEEK_END);
 	unsigned long len = (unsigned long)ftell(fptr);
 	fseek(fptr, 0, SEEK_SET);
-	char *content = malloc(len + 1);
 	fread(content, len, 1, fptr);
-	content[len] = 0;
+	content[len] = '\0';
 	fclose(fptr);
 
-	return content;
+	return len;
 }
 
 
@@ -142,61 +142,69 @@ int main(int argc, char *argv[])
 			/*  HTTP-compatible server
 			
 				Request format:
-					GET /<filename> HTTP/1.1\r\r
+					GET /<filename> HTTP/1.1\r\n\r\n
 
 				Response format:
-					HTTP/1.1 <statcode> <statmsg>\r\r<content>
+					HTTP/1.1 <statcode> <statmsg>\r\n\r\n<content>
 			*/
 
 			char request[MAX_REQUEST_LEN];
 			char filename[MAX_FILENAME_LEN];
-			char response_header[RESPONSE_HEADER_LEN];
-			char *response;
-			int valid = 1;
+			char response_header[MAX_RESPONSE_HEADER_LEN];
+			char *request_ptr = request, *response;
+			int response_len, valid = 1;
 
 			recv(new_fd, request, MAX_REQUEST_LEN, 0);
 
 			// check if request starts with "GET /"
-			if (strncmp(request, "GET /", 5) != 0) {
+			if (strncmp(request_ptr, "GET /", 5) != 0) {
 				valid = 0;
-				strcpy(response_header, "HTTP/1.1 400 Bad Request\r\r");
+				strcpy(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
 				goto READY_FOR_RESPONSE;
 			} else {
-				request += 5 * sizeof(char);
+				request_ptr = &request_ptr[5];
 			}
 
 			// extract filename from request
-			int space_pos = strcspn(request, " ");
-			strncpy(filename, request, space_pos);
-			filename[space_pos] = 0;
-			request += space_pos * sizeof(char);
+			int space_pos = strcspn(request_ptr, " ");
+			strncpy(filename, request_ptr, space_pos);
+			filename[space_pos] = '\0';
+			request_ptr = &request_ptr[space_pos];
 
-			// check if request ends with " HTTP/1.1\r\r"
-			if (strncmp(request, " HTTP/1.1\r\r", 11) != 0) {
+			// check if request ends with " HTTP/1.1\r\n\r\n"
+			if (strncmp(request_ptr, " HTTP/1.1\r\n\r\n", 11) != 0) {
 				valid = 0;
-				strcpy(response_header, "HTTP/1.1 400 Bad Request\r\r");
+				strcpy(response_header, "HTTP/1.1 400 Bad Request\r\n\r\n");
 				goto READY_FOR_RESPONSE;
 			}
 
-			char *content = read_file(filename);
-			if (!content) {
+			char content[MAX_CONTENT_LEN];
+			int file_len = read_file(content, filename);
+			if (file_len == -1) {
 				valid = 0;
-				strcpy(response_header, "HTTP/1.1 404 Not Found\r\r");
+				strcpy(response_header, "HTTP/1.1 404 Not Found\r\n\r\n");
 			} else {
-				strcpy(response_header, "HTTP/1.1 200 OK\r\r");
+				strcpy(response_header, "HTTP/1.1 200 OK\r\n\r\n");
 			}
 
 READY_FOR_RESPONSE:
 			if (valid) {
-				response = malloc(strlen(response_header) + strlen(content) + 1);
+				response_len = strlen(response_header) + file_len + 1;
+				response = malloc(response_len);
 				strcpy(response, response_header);
-				strcat(response, content);
+				// not using library functions here since...
+				// both strcat and strncat stop copying at NUL
+				for (int i = 0; i < file_len; i++) {
+					response[strlen(response_header) + i] = content[i];
+				}
+				response[response_len - 1] = '\0';
 			} else {
-				response = malloc(strlen(response_header) + 1);
+				response_len = strlen(response_header) + 1;
+				response = malloc(response_len);
 				strcpy(response, response_header);
 			}
 
-			if (send(new_fd, response, strlen(response), 0) == -1)
+			if (send(new_fd, response, response_len, 0) == -1)
 				perror("send");
 
 			/* HTTP-compatible server END */
