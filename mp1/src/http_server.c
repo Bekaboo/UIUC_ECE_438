@@ -20,7 +20,7 @@
 #define MAX_REQUEST_LEN 1024
 #define MAX_FILENAME_LEN 256
 #define MAX_RESPONSE_HEADER_LEN 32
-#define MAX_CONTENT_LEN 1048544
+#define MAX_CONTENT_LEN 4194304
 
 
 void sigchld_handler(int s)
@@ -51,7 +51,6 @@ int read_file(char *content, const char *filename)
 	unsigned long len = (unsigned long)ftell(fptr);
 	fseek(fptr, 0, SEEK_SET);
 	fread(content, len, 1, fptr);
-	content[len] = '\0';
 	fclose(fptr);
 
 	return len;
