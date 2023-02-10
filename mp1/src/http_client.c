@@ -114,14 +114,6 @@ int main(int argc, char *argv[])
 
 	// send request
 	char request[MAX_REQUEST_LEN];
-// 	sprintf(request, "\
-// GET %s HTTP/1.1\r\n\
-// User-Agent: Wget/1.20.3 (linux-gnu)\r\n\
-// Accept: */*\r\n\
-// Accept-Encoding: identity\r\n\
-// Host: %s\r\n\
-// Connection: Keep-Alive\r\n\
-// \r\n", filename, hostname);
 	sprintf(request, "GET %s HTTP/1.1\r\n\r\n", filename);
 	printf("client: sending request '''\n%s'''\n", request);
 	if (send(sockfd, request, strlen(request), 0) == -1) {
@@ -134,7 +126,6 @@ int main(int argc, char *argv[])
 		perror("recv");
 		return 1;
 	}
-	response[numbytes] = '\0';
 	printf("client: received %d bytes\n", numbytes);
 
 	// parse response
