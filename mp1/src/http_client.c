@@ -18,7 +18,8 @@
 #define MAX_PORT_LEN 8
 #define MAX_FILENAME_LEN 256
 #define MAX_REQUEST_LEN 1024
-#define MAX_RESPONSE_LEN 4194304
+#define MAX_RESPONSE_HEADER_LEN 32
+#define MAX_SEGMENT_LEN 4194304
 #define DEFAULT_PORT "80"
 
 // get sockaddr, IPv4 or IPv6:
@@ -33,7 +34,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(int argc, char *argv[])
 {
-	int sockfd, rv, numbytes;
+	int sockfd, rv;
 	char addr[INET6_ADDRSTRLEN];
 	struct addrinfo hints, *servinfo, *p;
 
@@ -112,8 +113,14 @@ int main(int argc, char *argv[])
 	printf("client: connecting to %s\n", addr);
 	freeaddrinfo(servinfo); // all done with this structure
 
-	// send request
+	/* HTTP-compatible client */
+
 	char request[MAX_REQUEST_LEN];
+	char response_header[MAX_RESPONSE_HEADER_LEN];
+	char segment[MAX_SEGMENT_LEN];
+	int segment_len, file_len = 0;
+
+	// send request
 	sprintf(request, "GET %s HTTP/1.1\r\n\r\n", filename);
 	printf("client: sending request '''\n%s'''\n", request);
 	if (send(sockfd, request, strlen(request), 0) == -1) {
@@ -121,34 +128,35 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	char response[MAX_RESPONSE_LEN];
-	char *response_ptr = response;
-	int file_size = 0;
-
-	while ((numbytes = recv(sockfd, response_ptr, MAX_RESPONSE_LEN-1, 0)) > 0) {
-		if (numbytes == -1) {
-			perror("recv");
-			return 1;
-		}
-		response_ptr = &response_ptr[numbytes];
-		file_size += numbytes;
-	}
-	printf("client: received %d bytes\n", file_size);
-
-	// parse response
-	char* content = strstr(response, "\r\n\r\n");
-	*content = '\0';
-	content = &content[4];
-	printf("client: received response header '''\n%s\n'''\n", response);
-
-	// write response to file
-	FILE *fp = fopen("output", "w");
-	if (fp == NULL) {
-		perror("fopen");
+	// receive response header
+	if (recv(sockfd, response_header, MAX_RESPONSE_HEADER_LEN, 0) == -1) {
+		perror("recv");
 		return 1;
 	}
-	fwrite(content, 1, file_size - (content - response), fp);
-	fclose(fp);
+	printf("client: received response header '''\n%s\n'''\n", response_header);
+
+	// check for valid response and open file
+	if (strncmp(response_header, "HTTP/1.1 200 OK", 15) == 0) {
+		FILE *fptr = fopen("output", "w");
+		if (fptr == NULL) {
+			perror("fopen");
+			return 1;
+		}
+
+		// receive and write file segments to disk
+		while ((segment_len = recv(sockfd, segment, MAX_SEGMENT_LEN, 0))) {
+			if (segment_len == -1) {
+				perror("recv");
+				return 1;
+			}
+			fwrite(segment, 1, segment_len, fptr);
+			file_len += segment_len;
+		}
+		printf("client: received %d bytes of file\n", file_len);
+		fclose(fptr);
+	}
+
+	/* HTTP-compatible client END */
 
 	close(sockfd);
 	return 0;
