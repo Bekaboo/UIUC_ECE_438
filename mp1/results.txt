@@ -2,11 +2,11 @@ test results:
 
  TEST 1: wget small file from your server succeeded!
  TEST 2: your client getting file from your server succeeded!
--25:  TEST 3: concurrency failed: very large file not correctly downloaded
+ TEST 3: concurrency test succeeded!
 ====================
 
-version:3
-score: 75/100
-all-time best score (your current grade): 75/100
+version:4
+score: 100/100
+all-time best score (your current grade): 100/100
 
 
