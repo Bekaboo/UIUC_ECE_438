@@ -38,9 +38,7 @@ typedef struct rdt_ctrl_info_t {
     int dupack_cnt;           /* Count of duplicate ACK                          */
     int rwnd;                 /* Self's receive window size (byte)               */
     int last_byte_sent;       /* Last byte sent (byte)                           */
-    int last_byte_acked;      /* Last byte ACKed (byte)                          */
-    int cwnd_start;           /* Congestion window start (byte)                  */
-    int cwnd_end;             /* Congestion window end (byte)                    */
+    int cwnd;                 /* Congestion window size (byte)                   */
     int ssthresh;             /* Slow start threshold (byte)                     */
     int bytes_remaining;      /* Number of bytes remaining to send (byte)        */
 } rdt_ctrl_info_t;
