@@ -9,7 +9,9 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include "rdt.h"
 
+#define MAX_BUFFERED_PACKETS 1024
 
 struct sockaddr_in si_me, si_other;
 int s, slen;
@@ -19,6 +21,16 @@ void diep(char *s) {
     exit(1);
 }
 
+
+rdt_packet_t make_ack(int acknum, int nslot) {
+    rdt_packet_t ack;
+    ack.header.seq = 0;
+    ack.header.ack = acknum;
+    ack.header.data_len = 0;
+    ack.header.rwnd = nslot * DATA_LEN;
+    ack.data = NULL;
+    return ack;
+}
 
 
 void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
@@ -39,6 +51,72 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
 
 	/* Now receive data and send acknowledgements */    
+
+    FILE* fptr = fopen(destinationFile, "w");
+    if (fptr == NULL)
+        diep("fopen");
+
+    rdt_packet_t* pktbuf[MAX_BUFFERED_PACKETS] = {NULL};
+    int head = 0, next = 0, tail = 0;
+
+    /*
+        PKTBUF: | * | * |   | * |   | * | ... [Empty]
+                  ^       ^               ^
+                head    next            tail
+
+        [head, tail) - All buffered packets reside here
+        [head, next) - These are already written to file
+        [next, tail) - All fragmented gaps appear here
+    */
+
+    while (1) {
+
+        /* Receive */
+        rdt_packet_t* pkt = (rdt_packet_t*) malloc(RDT_HEAD_LEN + DATA_LEN);
+        int recv_len;
+        if ((recv_len = recvfrom(s, pkt, RDT_HEAD_LEN + DATA_LEN, 0, \
+            (struct sockaddr *) &si_other, &slen)) == -1)
+            diep("recvfrom");
+        printf("Received packet of length %d from %s:%d\n", \
+            recv_len, inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+
+        /* Buffer the packet */
+        int pktnum = pkt->header.seq / DATA_LEN;
+        pktbuf[pktnum - head] = pkt;
+        if (tail <= pktnum) tail = pktnum + 1;
+
+        /* Update "next" ptr */
+        while (pktbuf[next - head]) {
+            fwrite(pktbuf[next - head]->data, 1, \
+                pktbuf[next - head]->header.data_len, fptr);
+            free(pktbuf[next - head]);
+            pktbuf[next - head] = NULL;                 // store it, free it, and done with it
+            next++;
+        }
+
+        /* Update "head" ptr */
+        /* Good news: there's no need to copy the pointers around */
+        if (next == tail) {
+            memset(pktbuf, (int)NULL, tail - head);     // clear the buffer,
+            head = tail;                                // and start over
+        }
+
+        /* Send ACK */
+        /* To keep things simple, we don't wait for 500ms */
+        rdt_packet_t ack = make_ack(next, \
+            MAX_BUFFERED_PACKETS - (tail - head));      // nslot = "tail" ~ MAX_BUFFERED_PACKETS
+        if (sendto(s, &ack, RDT_HEAD_LEN, 0, \
+            (struct sockaddr *) &si_other, slen) == -1)
+            diep("sendto");
+
+        /* Break at EOF */
+        if (pkt->header.data_len < DATA_LEN) break;
+
+    }
+
+    fclose(fptr);
+
+    /* Done */
 
     close(s);
 	printf("%s received.", destinationFile);
