@@ -41,7 +41,7 @@ rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
 
     rdt_ctrl->status = IN;
     rdt_ctrl->seq = SEQ_INIT;
-    rdt_ctrl->expack = SEQ_INIT + bytesToTransfer;
+    rdt_ctrl->expack = SEQ_INIT + min(DATA_LEN, bytesToTransfer);
     rdt_ctrl->dupack = 0;
     rdt_ctrl->dupack_cnt = 0;
     rdt_ctrl->rwnd = DATA_LEN;
