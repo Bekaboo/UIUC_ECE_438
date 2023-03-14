@@ -303,17 +303,8 @@ int rdt_sender_event_dupackcount(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
  * Side effects: recvbuf and control structure modified
  * */
 void rdt_sender_do_in(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
-    rdt_packet_t *pkt = NULL;
-    int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
-
-    /* Transmit the first packet */
-    pkt = sender_make_packet(&sendbuf[ctrl->seq], bytes_to_send, ctrl);
-    send_packet(pkt, bytes_to_send);
-    printf("Sent packet %d\n", ctrl->seq);
-
-    /* Update control structure */
-    ctrl->seq += bytes_to_send;
-    ctrl->bytes_remaining -= bytes_to_send;
+    /* Send the first packet */
+    rdt_sender_act_transmit(ctrl, sendbuf);
 
     /* Switch to SS */
     ctrl->status = SS;
