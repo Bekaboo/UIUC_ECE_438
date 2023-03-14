@@ -42,6 +42,7 @@ typedef struct rdt_ctrl_info_t {
     int cwnd_start;           /* Congestion window start (byte)                  */
     int cwnd_end;             /* Congestion window end (byte)                    */
     int ssthresh;             /* Slow start threshold (byte)                     */
+    int bytes_remaining;      /* Number of bytes remaining to send (byte)        */
 } rdt_ctrl_info_t;
 
 /*
