@@ -29,19 +29,19 @@ typedef struct rdt_timer_t {
  * Control structure for reliable data transfer FSM
  * */
 typedef struct rdt_ctrl_info_t {
-    rdt_timer_t timer;        /* Timer                                    */
-    enum rdt_status_t status; /* Current status                           */
-    int seq;                  /* Current sequence number                  */
-    int ack;                  /* Expected ACK number                      */
-    int dupack;               /* Duplicate ACK number                     */
-    int dupack_cnt;           /* Count of duplicate ACK                   */
-    int rwnd;                 /* Receive window size (byte)               */
-    int max_bytes_inflight;   /* Maximum number of bytes in flight (byte) */
-    int last_byte_sent;       /* Last byte sent (byte)                    */
-    int last_byte_acked;      /* Last byte ACKed (byte)                   */
-    int cwnd_start;           /* Congestion window start (byte)           */
-    int cwnd_end;             /* Congestion window end (byte)             */
-    int ssthresh;             /* Slow start threshold (byte)              */
+    rdt_timer_t timer;        /* Timer                                           */
+    enum rdt_status_t status; /* Current status                                  */
+    int seq;                  /* Current sequence number                         */
+    int ack;                  /* Expected ACK number                             */
+    int dupack;               /* Duplicate ACK number                            */
+    int dupack_cnt;           /* Count of duplicate ACK                          */
+    int rwnd;                 /* Receive window size (byte)                      */
+    int max_bytes_inflight;   /* Maximum number of bytes in flight allowd (byte) */
+    int last_byte_sent;       /* Last byte sent (byte)                           */
+    int last_byte_acked;      /* Last byte ACKed (byte)                          */
+    int cwnd_start;           /* Congestion window start (byte)                  */
+    int cwnd_end;             /* Congestion window end (byte)                    */
+    int ssthresh;             /* Slow start threshold (byte)                     */
 } rdt_ctrl_info_t;
 
 /*
