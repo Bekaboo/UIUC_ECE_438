@@ -27,20 +27,20 @@ typedef struct rdt_timer_t {
 } rdt_timer_t;
 
 /*
- * Control structure for reliable data transfer FSM
+ * Control structure for reliable data transfer FSM (sender side)
  * */
-typedef struct rdt_ctrl_info_t {
+typedef struct rdt_sender_ctrl_info_t {
     rdt_timer_t timer;        /* Timer                                           */
     enum rdt_status_t status; /* Current status                                  */
     int seq;                  /* Current sequence number                         */
-    int ack;                  /* Expected ACK number                             */
+    int expack;               /* Expected ACK number                             */
     int dupack;               /* Duplicate ACK number                            */
     int dupack_cnt;           /* Count of duplicate ACK                          */
     int rwnd;                 /* Self's receive window size (byte)               */
     int cwnd;                 /* Congestion window size (byte)                   */
     int ssthresh;             /* Slow start threshold (byte)                     */
     int bytes_remaining;      /* Number of bytes remaining to send (byte)        */
-} rdt_ctrl_info_t;
+} rdt_sender_ctrl_info_t;
 
 /*
  * Extra information in each packet for reliable data transfer
