@@ -1,3 +1,5 @@
+#include "rdt.h"
+#include "alg.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +14,8 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/time.h>
+#include <fcntl.h>
+#include <errno.h>
 
 struct sockaddr_in si_other;
 int s, slen;
@@ -21,7 +25,395 @@ void diep(char *s) {
     exit(1);
 }
 
+/*
+ * Initialize the control structure for the RDT FSM
+ *
+ * Input: bytesToTransfer - number of bytes to transfer
+ * Return: pointer to the control structure if successful,
+ * NULL otherwise
+ * */
+rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
+    rdt_sender_ctrl_info_t *rdt_ctrl
+        = (rdt_sender_ctrl_info_t *) malloc(sizeof(rdt_sender_ctrl_info_t));
+    if (rdt_ctrl == NULL) {
+        return NULL;
+    }
 
+    rdt_ctrl->status = IN;
+    rdt_ctrl->seq = SEQ_INIT;
+    rdt_ctrl->expack = SEQ_INIT + bytesToTransfer;
+    rdt_ctrl->dupack = 0;
+    rdt_ctrl->dupack_cnt = 0;
+    rdt_ctrl->rwnd = DATA_LEN;
+    rdt_ctrl->cwnd = DATA_LEN;
+    rdt_ctrl->ssthresh = 64 * 1024;
+    rdt_ctrl->bytes_remaining = bytesToTransfer;
+
+    return rdt_ctrl;
+}
+
+/*
+ * Make packet with given data
+ *
+ * Input: data - pointer to the data to be sent
+ *        len  - length of the data
+ *        ctrl - pointer to the control structure
+ * Return: pointer to the packet if successful, exit otherwise
+ * */
+rdt_packet_t* sender_make_packet(char *data, int len,
+                                 rdt_sender_ctrl_info_t* ctrl) {
+    rdt_packet_t *pkt = (rdt_packet_t *) malloc(sizeof(rdt_header_t) + len);
+    if (pkt == NULL) {
+        fprintf(stderr, "Failed to make packet %d\n", ctrl->seq);
+        exit(1);
+    }
+
+    pkt->header.seq = ctrl->seq;
+    pkt->header.ack = 0;    /* Sender packet, ack not used */
+    pkt->header.rwnd = ctrl->rwnd;
+    pkt->header.data_len = len;
+    memcpy(pkt->data, data, len);
+
+    return pkt;
+}
+
+/*
+ * Send a packet, exit if failed
+ *
+ * Input: pkt - pointer to the packet
+ *        len - length of the data, EXCLUDING RDT HEADER
+ * */
+void send_packet(rdt_packet_t *pkt, int len) {
+    if (sendto(s, pkt, RDT_HEAD_LEN + len, 0,
+               (struct sockaddr *) &si_other, slen) == -1) {
+        free(pkt);
+        diep("sendto()");
+    }
+    free(pkt);
+}
+
+/*
+ * Start the timer
+ *
+ * Input: timer - pointer to the timer
+ *        timeout - timeout value
+ * Return: None
+ * */
+void timer_start(rdt_timer_t *timer, int timeout) {
+    timer->timeout = timeout;
+    gettimeofday(&timer->start, NULL);
+}
+
+/*
+ * Check if the timer has timed out
+ *
+ * Input: timer - pointer to the timer
+ * Return: 1 if timed out, 0 otherwise
+ * */
+int timer_timeout(rdt_timer_t *timer) {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    /* Check if timed out */
+    if ((now.tv_sec - timer->start.tv_sec) * 1000
+            + (now.tv_usec - timer->start.tv_usec) > timer->timeout) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/*
+ * Retransmit a packet
+ *
+ * Input: ctrl - pointer to the control structure
+ *        sendbuf - send (data) buffer
+ * Return: None
+ * */
+void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
+    int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
+    rdt_packet_t *pkt = sender_make_packet(
+        &sendbuf[min(ctrl->seq - DATA_LEN, 0)], bytes_to_send, ctrl);
+    send_packet(pkt, bytes_to_send);
+    printf("Retransmit packet %d\n", (int) min(ctrl->seq - DATA_LEN, 0));
+    timer_start(&ctrl->timer, TIMEOUT);
+}
+
+/*
+ * Transmit a new packet
+ *
+ * Input: ctrl - pointer to the control structure
+ *        sendbuf - send (data) buffer
+ * Return: None
+ * */
+void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
+    int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
+    rdt_packet_t *pkt = sender_make_packet(
+        &sendbuf[ctrl->seq], bytes_to_send, ctrl);
+    send_packet(pkt, bytes_to_send);
+    printf("Sent packet %d\n", ctrl->seq);
+
+    /* Update control structure */
+    ctrl->seq += bytes_to_send;
+    ctrl->bytes_remaining -= bytes_to_send;
+
+    /* Start timer */
+    timer_start(&ctrl->timer, TIMEOUT);
+}
+
+/*
+ * Action taken by the sender triggered by timed out event
+ *
+ * Input: ctrl - pointer to the control structure
+ *        sendbuf - send (data) buffer
+ * Return: timeout - 1 if the timer has timed out, 0 otherwise
+ * Side effects: change control structure
+ * */
+int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
+    if (!timer_timeout(&ctrl->timer)) {
+        return 0;
+    }
+
+    /* Update control structure */
+    ctrl->ssthresh = ctrl->cwnd / 2;
+    ctrl->cwnd = DATA_LEN;
+    ctrl->dupack_cnt = 0;
+    ctrl->status = SS;
+
+    rdt_sender_act_retransmit(ctrl, sendbuf);
+    return 1;
+}
+
+/*
+ * Action taken by the sender triggered by received ACK event
+ *
+ * Input: ctrl - pointer to the control structure
+ *        sendbuf - send (data) buffer
+ *        recvbuf - receive buffer
+ * Return: ackrecved - 1 if received ack, 0 otherwise
+ * Side effects:
+ * */
+int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
+                           char *sendbuf, char *recvbuf) {
+    /* Check if there are packets arrive */
+    int recvlen = recvfrom(s, recvbuf, DATA_LEN + RDT_HEAD_LEN, 0,
+                           (struct sockaddr *) &si_other, (socklen_t *) &slen);
+
+    /* No packet received */
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        return 0;
+    }
+
+    if (recvlen <= 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+        diep("recvfrom()");     // Error
+    } else if (recvlen > 0) {   // Received data (ACK)
+                                // TODO: what if ACK is corrupted?
+        rdt_packet_t *recvpkt = (rdt_packet_t *) recvbuf;
+        if (recvpkt->header.ack == ctrl->dupack) {          // Duplicate ACK
+            if (ctrl->status == FR) {
+                ctrl->cwnd += DATA_LEN;
+            } else {
+                ctrl->dupack_cnt++;
+            }
+        } else if (recvpkt->header.ack < ctrl->expack) {    // Old ACK
+                                                            // (1st dup ACK)
+            if (ctrl->status == FR) {
+                ctrl->cwnd += DATA_LEN;
+                rdt_sender_act_transmit(ctrl, sendbuf);
+            } else {
+                ctrl->dupack = recvpkt->header.ack;
+                ctrl->dupack_cnt = 1;
+            }
+        } else {                                            // New ACK
+            switch (ctrl->status) {
+                case SS:
+                    /* Update control structure */
+                    ctrl->cwnd += DATA_LEN;
+                    ctrl->dupack_cnt = 0;
+                    ctrl->expack = recvpkt->header.ack
+                                    + min(DATA_LEN, ctrl->bytes_remaining);
+
+                    /* Transmit new packet, as allowed */
+                    rdt_sender_act_transmit(ctrl, sendbuf);
+                    break;
+
+                case CA:
+                    ctrl->cwnd += DATA_LEN  * DATA_LEN / ctrl->cwnd;
+                    ctrl->dupack_cnt = 0;
+                    ctrl->expack = recvpkt->header.ack
+                                    + min(DATA_LEN, ctrl->bytes_remaining);
+
+                    /* Transmit new packet, as allowed */
+                    rdt_sender_act_transmit(ctrl, sendbuf);
+                    break;
+
+                case FR:
+                    ctrl->cwnd = ctrl->ssthresh;
+                    ctrl->dupack = 0;
+                    ctrl->status = CA;
+                    ctrl->expack = recvpkt->header.ack
+                                    + min(DATA_LEN, ctrl->bytes_remaining);
+                    break;
+
+                default: break;
+            }
+        }
+    }
+
+    return 1;
+}
+
+/*
+ * Action taken by the sender triggered by duplicate ACK count event
+ *
+ * Input: ctrl - pointer to the control structure
+ *        sendbuf - send (data) buffer
+ * Return: 1 if dupack >= 3, 0 otherwise
+ * */
+int rdt_sender_event_dupackcount(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
+    if (ctrl->dupack_cnt < 3) {
+        return 0;
+    }
+
+    switch (ctrl->status) {
+        case SS:
+        case CA:
+            /* Update control structure */
+            ctrl->ssthresh = ctrl->cwnd / 2;
+            ctrl->cwnd = ctrl->ssthresh + 3 * DATA_LEN;
+
+            rdt_sender_act_retransmit(ctrl, sendbuf);
+
+            /* Switch to state FR */
+            ctrl->status = FR;
+            break;
+
+        default: break;
+    }
+
+    return 1;
+}
+
+/*
+ * Reliable data transfer sender, IN state
+ *
+ * Input: ctrl - pointer to the control structure
+ *        sendbuf - send (data) buffer
+ * Return: None
+ * Side effects: recvbuf and control structure modified
+ * */
+void rdt_sender_do_in(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
+    rdt_packet_t *pkt = NULL;
+    int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
+
+    /* Transmit the first packet */
+    pkt = sender_make_packet(&sendbuf[ctrl->seq], bytes_to_send, ctrl);
+    send_packet(pkt, bytes_to_send);
+    printf("Sent packet %d\n", ctrl->seq);
+
+    /* Update control structure */
+    ctrl->seq += bytes_to_send;
+    ctrl->bytes_remaining -= bytes_to_send;
+
+    /* Switch to SS */
+    ctrl->status = SS;
+    return;
+}
+
+/*
+ * Reliable data transfer sender, SS state
+ *
+ * Input: ctrl - pointer to the control structure
+ *        sendbuf - send (data) buffer
+ *        recvbuf - receive buffer
+ * Return: None
+ * Side effects: recvbuf and control structure modified
+ * */
+void rdt_sender_do_ss(rdt_sender_ctrl_info_t *ctrl,
+                      char *sendbuf, char *recvbuf) {
+    /* Action taken when timed out */
+    if (rdt_sender_event_timeout(ctrl, sendbuf)) {
+        return;
+    }
+
+    /* Action taken for received ACK */
+    if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
+        return;
+    }
+
+    /* Action taken to check duplicate ACK count */
+    if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
+        return;
+    }
+
+    /* Fast retransmit and switch to state FR (fast recovery)
+     * if found more than 3 duplicate ACKs */
+    if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
+        return;
+    }
+
+    /* Switch to status CA (congestion avoidance) if cwnd is larger than
+     * ssthresh */
+    if (ctrl->cwnd >= ctrl->ssthresh) {
+        ctrl->status = CA;
+        return;
+    }
+}
+
+/*
+ * Reliable data transfer sender, CA state
+ *
+ * Input: ctrl - pointer to the control structure
+ *        sendbuf - send (data) buffer
+ *        recvbuf - receive buffer
+ * Return: None
+ * Side effects: recvbuf and control structure modified
+ * */
+void rdt_sender_do_ca(rdt_sender_ctrl_info_t *ctrl,
+                      char *sendbuf, char *recvbuf) {
+    if (rdt_sender_event_timeout(ctrl, sendbuf)) {
+        return;
+    }
+
+    if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
+        return;
+    }
+
+    if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
+        return;
+    }
+}
+
+/*
+ * Reliable data transfer sender, FR state
+ *
+ * Input: ctrl - pointer to the control structure
+ *        sendbuf - send (data) buffer
+ *        recvbuf - receive buffer
+ * Return: None
+ * Side effects: recvbuf and control structure modified
+ * */
+void rdt_sender_do_fr(rdt_sender_ctrl_info_t *ctrl,
+                      char *sendbuf, char *recvbuf) {
+    if (rdt_sender_event_timeout(ctrl, sendbuf)) {
+        return;
+    }
+
+    if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
+        return;
+    }
+}
+
+/*
+ * Reliably transfer 'bytesToTransfer' bytes from 'filename' to host
+ * at 'hostname' over UDP 'hostUDPport'
+ *
+ * Input: hostname - hostname of the receiver
+ *        hostUDPport - UDP port number of the receiver
+ *        filename - name of the file to transfer
+ *        bytesToTransfer - number of bytes to transfer
+ * Return: None
+ * */
 void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* filename, unsigned long long int bytesToTransfer) {
     //Open the file
     FILE *fp;
@@ -33,14 +425,21 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
 	/* Determine how many bytes to transfer */
 
+    /* Get the length of the socket address struct */
     slen = sizeof (si_other);
 
+    /* Create UDP socket, exit if failed to create one */
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
+    /* Set socket to non-blocking */
+    int s_flags = fcntl(s, F_GETFL, 0);
+    fcntl(s, F_SETFL, s_flags | O_NONBLOCK);
 
+    /* Initialize the socket address struct */
     memset((char *) &si_other, 0, sizeof (si_other));
     si_other.sin_family = AF_INET;
     si_other.sin_port = htons(hostUDPport);
+    /* ?? */
     if (inet_aton(hostname, &si_other.sin_addr) == 0) {
         fprintf(stderr, "inet_aton() failed\n");
         exit(1);
@@ -49,8 +448,37 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
 	/* Send data and receive acknowledgements on s*/
 
+    /* Initialize control structure for new RDT FSM */
+    rdt_sender_ctrl_info_t *ctrl = rdt_sender_ctrl_init(bytesToTransfer);
+    if (ctrl == NULL) {
+        fprintf(stderr, "Failed to initialize control structure for RDT\n");
+        exit(1);
+    }
+
+    /* Initialize buffers for sending and receiving messages */
+    char recvbuf[DATA_LEN + RDT_HEAD_LEN];  // Only holds one packet at a time
+    char sendbuf[bytesToTransfer];
+    memset(recvbuf, 0, DATA_LEN + RDT_HEAD_LEN);
+    if (bytesToTransfer != fread(sendbuf, 1, bytesToTransfer, fp)) {
+        fprintf(stderr, "Failed to read from file\n");
+        exit(1);
+    }
+
+    /* Start transmission */
+    while (ctrl->bytes_remaining > 0) {
+        switch (ctrl->status) {
+            case IN: rdt_sender_do_in(ctrl, sendbuf); break;
+            case SS: rdt_sender_do_ss(ctrl, sendbuf, recvbuf); break;
+            case CA: rdt_sender_do_ca(ctrl, sendbuf, recvbuf); break;
+            case FR: rdt_sender_do_fr(ctrl, sendbuf, recvbuf); break;
+        };
+    }
+
+    /* Close the socket */
     printf("Closing the socket\n");
     close(s);
+    /* Release memory occupied by the RDT control struct */
+    free(ctrl);
     return;
 
 }
