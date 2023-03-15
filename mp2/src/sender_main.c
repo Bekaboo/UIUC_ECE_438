@@ -72,7 +72,7 @@ rdt_packet_t* rdt_sender_make_packet(char *data, int len,
     pkt->header.ack = 0;    /* Sender packet, ack not used */
     pkt->header.rwnd = ctrl->rwnd;
     pkt->header.data_len = len;
-    memcpy(&pkt->data, data, len);
+    memcpy(pkt->data, data, len);
 
     return pkt;
 }

@@ -57,8 +57,8 @@ typedef struct rdt_header_t {
  * Reliable data transfer packet
  * */
 typedef struct rdt_packet_t {
-    rdt_header_t header;      /* Header             */
-    char data;                /* First byte of data */
+    rdt_header_t header;      /* Header                                   */
+    char data[];              /* Data buffer, length = data_len in header */
 } rdt_packet_t;
 
 #endif /* __RDT_H__ */

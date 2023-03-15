@@ -28,7 +28,6 @@ rdt_packet_t* make_ack(int acknum, int nslot) {
     ack->header.ack = acknum;
     ack->header.data_len = 0;
     ack->header.rwnd = nslot * DATA_LEN;
-    ack->data = '\0';
     return ack;
 }
 
@@ -88,7 +87,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
         /* Update "next" ptr */
         while (pktbuf[next - head]) {
-            fwrite(&pktbuf[next - head]->data, 1, \
+            fwrite(pktbuf[next - head]->data, 1, \
                 pktbuf[next - head]->header.data_len, fptr);
             free(pktbuf[next - head]);
             pktbuf[next - head] = NULL;                 // store it, free it, and done with it
