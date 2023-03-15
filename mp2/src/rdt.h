@@ -18,7 +18,7 @@
  * CA: congestion avoidance
  * FR: fast recovery
  * */
-enum rdt_sender_state_t {IN, SS, CA, FR};
+typedef enum rdt_sender_state_t {IN, SS, CA, FR} rdt_sender_state_t;
 
 /* Timer */
 typedef struct rdt_timer_t {
@@ -30,16 +30,16 @@ typedef struct rdt_timer_t {
  * Control structure for reliable data transfer FSM (sender side)
  * */
 typedef struct rdt_sender_ctrl_info_t {
-    rdt_timer_t timer;               /* Timer                                    */
-    enum rdt_sender_state_t state;   /* Current state                            */
-    int seq;                         /* Current sequence number                  */
-    int expack;                      /* Expected ACK number                      */
-    int dupack;                      /* Duplicate ACK number                     */
-    int dupack_cnt;                  /* Count of duplicate ACK                   */
-    int rwnd;                        /* Self's receive window size (byte)        */
-    int cwnd;                        /* Congestion window size (byte)            */
-    int ssthresh;                    /* Slow start threshold (byte)              */
-    int bytes_remaining;             /* Number of bytes remaining to send (byte) */
+    rdt_timer_t timer;        /* Timer                                    */
+    rdt_sender_state_t state; /* Current state                            */
+    int seq;                  /* Current sequence number                  */
+    int expack;               /* Expected ACK number                      */
+    int dupack;               /* Duplicate ACK number                     */
+    int dupack_cnt;           /* Count of duplicate ACK                   */
+    int rwnd;                 /* Self's receive window size (byte)        */
+    int cwnd;                 /* Congestion window size (byte)            */
+    int ssthresh;             /* Slow start threshold (byte)              */
+    int bytes_remaining;      /* Number of bytes remaining to send (byte) */
 } rdt_sender_ctrl_info_t;
 
 /*
