@@ -22,13 +22,13 @@ void diep(char *s) {
 }
 
 
-rdt_packet_t make_ack(int acknum, int nslot) {
-    rdt_packet_t ack;
-    ack.header.seq = 0;
-    ack.header.ack = acknum;
-    ack.header.data_len = 0;
-    ack.header.rwnd = nslot * DATA_LEN;
-    ack.data = NULL;
+rdt_packet_t* make_ack(int acknum, int nslot) {
+    rdt_packet_t* ack = (rdt_packet_t*) malloc(RDT_HEAD_LEN);
+    ack->header.seq = 0;
+    ack->header.ack = acknum;
+    ack->header.data_len = 0;
+    ack->header.rwnd = nslot * DATA_LEN;
+    ack->data = '\0';
     return ack;
 }
 
@@ -75,19 +75,20 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         rdt_packet_t* pkt = (rdt_packet_t*) malloc(RDT_HEAD_LEN + DATA_LEN);
         int recv_len;
         if ((recv_len = recvfrom(s, pkt, RDT_HEAD_LEN + DATA_LEN, 0, \
-            (struct sockaddr *) &si_other, &slen)) == -1)
+            (struct sockaddr *) &si_other, (socklen_t *) &slen)) == -1)
             diep("recvfrom");
         printf("Received packet of length %d from %s:%d\n", \
             recv_len, inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
 
         /* Buffer the packet */
         int pktnum = pkt->header.seq / DATA_LEN;
-        pktbuf[pktnum - head] = pkt;
+        pktbuf[pktnum - head] = malloc(RDT_HEAD_LEN + pkt->header.data_len);
+        memcpy(pktbuf[pktnum - head], pkt, RDT_HEAD_LEN + pkt->header.data_len);
         if (tail <= pktnum) tail = pktnum + 1;
 
         /* Update "next" ptr */
         while (pktbuf[next - head]) {
-            fwrite(pktbuf[next - head]->data, 1, \
+            fwrite(&pktbuf[next - head]->data, 1, \
                 pktbuf[next - head]->header.data_len, fptr);
             free(pktbuf[next - head]);
             pktbuf[next - head] = NULL;                 // store it, free it, and done with it
@@ -97,15 +98,15 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         /* Update "head" ptr */
         /* Good news: there's no need to copy the pointers around */
         if (next == tail) {
-            memset(pktbuf, (int)NULL, tail - head);     // clear the buffer,
+            memset(pktbuf, 0, tail - head);             // clear the buffer,
             head = tail;                                // and start over
         }
 
         /* Send ACK */
         /* To keep things simple, we don't wait for 500ms */
-        rdt_packet_t ack = make_ack(next, \
+        rdt_packet_t* ack = make_ack(next, \
             MAX_BUFFERED_PACKETS - (tail - head));      // nslot = "tail" ~ MAX_BUFFERED_PACKETS
-        if (sendto(s, &ack, RDT_HEAD_LEN, 0, \
+        if (sendto(s, ack, RDT_HEAD_LEN, 0, \
             (struct sockaddr *) &si_other, slen) == -1)
             diep("sendto");
 
