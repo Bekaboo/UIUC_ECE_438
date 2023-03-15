@@ -161,6 +161,10 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
  * Return: None
  * */
 void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
+    if (ctrl->bytes_remaining <= 0) {
+        return;
+    }
+
     int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
     rdt_packet_t *pkt = rdt_sender_make_packet(
         &sendbuf[ctrl->seq], bytes_to_send, ctrl);
