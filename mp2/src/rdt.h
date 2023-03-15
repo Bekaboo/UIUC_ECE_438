@@ -8,7 +8,6 @@
 #define UDP_HEAD_LEN 8
 #define RDT_HEAD_LEN (sizeof(rdt_header_t))
 #define DATA_LEN     (MTU - IP_HEAD_LEN - UDP_HEAD_LEN - RDT_HEAD_LEN)
-#define SEQ_INIT     0
 #define TIMEOUT      1000 /* 1 second */
 
 /*
