@@ -25,7 +25,7 @@ main() {
                     "$receiver" "$port" "$filewritten"
                     break;
                     ;;
-                dbg)
+                dbg-sender)
                     gdb -ex 'b rdt_sender_state_in' \
                         -ex 'b rdt_sender_state_ss' \
                         -ex 'b rdt_sender_state_ca' \
