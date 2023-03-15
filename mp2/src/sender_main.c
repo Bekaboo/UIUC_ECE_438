@@ -149,7 +149,7 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
         printf("Retransmit packet %d\n", pkt_seq);
         timer_start(&ctrl->timer, TIMEOUT);
     } else {
-        printf("Failed to retransmit packet %d\n", pkt_seq);
+        fprintf(stderr, "Failed to retransmit packet %d\n", pkt_seq);
     }
 }
 
@@ -175,7 +175,7 @@ void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
         /* Start timer */
         timer_start(&ctrl->timer, TIMEOUT);
     } else {
-        printf("Failed to transmit packet %d\n", ctrl->seq);
+        fprintf(stderr, "Failed to transmit packet %d\n", ctrl->seq);
     }
 }
 
