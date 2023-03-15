@@ -30,6 +30,8 @@ main() {
                         -ex 'b rdt_sender_state_ca' \
                         -ex 'b rdt_sender_state_fr' \
                         --args "$sender" "$receiverip" "$port" "$filesent" "$bytes"
+                    break;
+                    ;;
             esac
             shift
         done
