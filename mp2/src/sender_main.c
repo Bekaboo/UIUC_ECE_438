@@ -250,7 +250,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                     ctrl->expack = recvpkt->header.ack
                                     + min(DATA_LEN, ctrl->bytes_remaining);
 
-                    /* Transmit new packet, as allowed */
+                    /* Transmit a new packet */
                     rdt_sender_act_transmit(ctrl, sendbuf);
                     break;
 
@@ -260,7 +260,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                     ctrl->expack = recvpkt->header.ack
                                     + min(DATA_LEN, ctrl->bytes_remaining);
 
-                    /* Transmit new packet, as allowed */
+                    /* Transmit a new packet */
                     rdt_sender_act_transmit(ctrl, sendbuf);
                     break;
 
@@ -360,6 +360,10 @@ void rdt_sender_state_ss(rdt_sender_ctrl_info_t *ctrl,
         ctrl->state = CA;
         return;
     }
+
+    /* Transmit a new packet */
+    rdt_sender_act_transmit(ctrl, sendbuf);
+    return;
 }
 
 /*
@@ -384,6 +388,10 @@ void rdt_sender_state_ca(rdt_sender_ctrl_info_t *ctrl,
     if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
         return;
     }
+
+    /* Transmit a new packet */
+    rdt_sender_act_transmit(ctrl, sendbuf);
+    return;
 }
 
 /*
@@ -404,6 +412,10 @@ void rdt_sender_state_fr(rdt_sender_ctrl_info_t *ctrl,
     if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
         return;
     }
+
+    /* Transmit a new packet */
+    rdt_sender_act_transmit(ctrl, sendbuf);
+    return;
 }
 
 /*
