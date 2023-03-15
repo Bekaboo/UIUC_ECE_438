@@ -231,6 +231,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                                 // TODO: what if ACK is corrupted?
         rdt_packet_t *recvpkt = (rdt_packet_t *) recvbuf;
         if (recvpkt->header.ack == ctrl->dupack) {          // Duplicate ACK
+            printf("Received duplicate ACK %d\n", recvpkt->header.ack);
             if (ctrl->state == FR) {
                 ctrl->cwnd += DATA_LEN;
             } else {
@@ -238,6 +239,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
             }
         } else if (recvpkt->header.ack < ctrl->expack) {    // Old ACK
                                                             // (1st dup ACK)
+            printf("Received duplicate ACK %d\n", recvpkt->header.ack);
             if (ctrl->state == FR) {
                 ctrl->cwnd += DATA_LEN;
                 rdt_sender_act_transmit(ctrl, sendbuf);
@@ -246,6 +248,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                 ctrl->dupack_cnt = 1;
             }
         } else {                                            // New ACK
+            printf("Received new ACK %d\n", recvpkt->header.ack);
             switch (ctrl->state) {
                 case SS:
                     /* Update control structure */
