@@ -251,6 +251,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
             switch (ctrl->state) {
                 case SS:
                     /* Update control structure */
+                    ctrl->seq = recvpkt->header.ack;
                     ctrl->bytes_remaining -= min(DATA_LEN,
                                                  ctrl->bytes_remaining);
                     ctrl->cwnd += DATA_LEN;
@@ -263,6 +264,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                     break;
 
                 case CA:
+                    ctrl->seq = recvpkt->header.ack;
                     ctrl->bytes_remaining -= min(DATA_LEN,
                                                  ctrl->bytes_remaining);
                     ctrl->cwnd += DATA_LEN  * DATA_LEN / ctrl->cwnd;
@@ -275,6 +277,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                     break;
 
                 case FR:
+                    ctrl->seq = recvpkt->header.ack;
                     ctrl->bytes_remaining -= min(DATA_LEN,
                                                  ctrl->bytes_remaining);
                     ctrl->cwnd = ctrl->ssthresh;
