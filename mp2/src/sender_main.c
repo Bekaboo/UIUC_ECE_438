@@ -192,6 +192,9 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
         return 0;
     }
 
+    printf("Timeout detected, retransmitting packet %d\n",
+            (int) max(ctrl->seq - DATA_LEN, 0));
+
     /* Update control structure */
     ctrl->ssthresh = ctrl->cwnd / 2;
     ctrl->cwnd = DATA_LEN;
