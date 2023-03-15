@@ -120,7 +120,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     /* Done */
 
     close(s);
-	printf("Packets written to file %s\n", destinationFile);
+	printf("Data written to file %s\n", destinationFile);
     return;
 }
 
