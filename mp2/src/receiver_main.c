@@ -103,7 +103,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
         /* Send ACK */
         /* To keep things simple, we don't wait for 500ms */
-        rdt_packet_t* ack = make_ack(next, \
+        rdt_packet_t* ack = make_ack(next * DATA_LEN, \
             MAX_BUFFERED_PACKETS - (tail - head));      // nslot = "tail" ~ MAX_BUFFERED_PACKETS
         if (sendto(s, ack, RDT_HEAD_LEN, 0, \
             (struct sockaddr *) &si_other, slen) == -1)
