@@ -141,14 +141,15 @@ int timer_timeout(rdt_timer_t *timer) {
  * */
 void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
     int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
-    rdt_packet_t *pkt = rdt_sender_make_packet(
-        &sendbuf[min(ctrl->seq - DATA_LEN, 0)], bytes_to_send, ctrl);
+    int pkt_seq = max(ctrl->seq - DATA_LEN, 0);
+    rdt_packet_t *pkt = rdt_sender_make_packet(&sendbuf[pkt_seq],
+                                               bytes_to_send, ctrl);
+
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
-        printf("Retransmit packet %d\n", (int) min(ctrl->seq - DATA_LEN, 0));
+        printf("Retransmit packet %d\n", pkt_seq);
         timer_start(&ctrl->timer, TIMEOUT);
     } else {
-        printf("Failed to retransmit packet %d\n",
-               (int) min(ctrl->seq - DATA_LEN, 0));
+        printf("Failed to retransmit packet %d\n", pkt_seq);
     }
 }
 
