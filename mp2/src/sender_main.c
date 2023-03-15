@@ -463,22 +463,22 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
 	/* Send data and receive acknowledgements on s*/
 
-    /* Initialize control structure for new RDT FSM */
-    rdt_sender_ctrl_info_t *ctrl = rdt_sender_ctrl_init(bytesToTransfer);
-    if (ctrl == NULL) {
-        fprintf(stderr, "Failed to initialize control structure for RDT\n");
-        exit(1);
-    }
-
     /* Initialize buffers for sending and receiving messages */
     char recvbuf[DATA_LEN + RDT_HEAD_LEN];  // Only holds one packet at a time
     char sendbuf[bytesToTransfer];
     memset(recvbuf, 0, DATA_LEN + RDT_HEAD_LEN);
-    int bytes_read = fread(sendbuf, 1, bytesToTransfer, fp);
-    if (bytesToTransfer != bytes_read) {
+    int bytesRead = fread(sendbuf, 1, bytesToTransfer, fp);
+    if (bytesToTransfer != bytesRead) {
         fprintf(stderr, "Warning: "
                 "bytesToTransfer set to %llu but only %d bytes read\n",
-                bytesToTransfer, bytes_read);
+                bytesToTransfer, bytesRead);
+    }
+
+    /* Initialize control structure for new RDT FSM */
+    rdt_sender_ctrl_info_t *ctrl = rdt_sender_ctrl_init(bytesRead);
+    if (ctrl == NULL) {
+        fprintf(stderr, "Failed to initialize control structure for RDT\n");
+        exit(1);
     }
 
     /* Start transmission */
