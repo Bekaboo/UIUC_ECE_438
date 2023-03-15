@@ -83,7 +83,7 @@ rdt_packet_t* rdt_sender_make_packet(char *data, int len,
  * Input: pkt - pointer to the packet
  *        len - length of the data, EXCLUDING RDT HEADER
  * */
-void rdt_send_packet(rdt_packet_t *pkt, int len) {
+void rdt_sender_send_packet(rdt_packet_t *pkt, int len) {
     if (sendto(s, pkt, RDT_HEAD_LEN + len, 0,
                (struct sockaddr *) &si_other, slen) == -1) {
         free(pkt);
@@ -134,7 +134,7 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
     int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
     rdt_packet_t *pkt = rdt_sender_make_packet(
         &sendbuf[min(ctrl->seq - DATA_LEN, 0)], bytes_to_send, ctrl);
-    rdt_send_packet(pkt, bytes_to_send);
+    rdt_sender_send_packet(pkt, bytes_to_send);
     printf("Retransmit packet %d\n", (int) min(ctrl->seq - DATA_LEN, 0));
     timer_start(&ctrl->timer, TIMEOUT);
 }
@@ -150,7 +150,7 @@ void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
     int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
     rdt_packet_t *pkt = rdt_sender_make_packet(
         &sendbuf[ctrl->seq], bytes_to_send, ctrl);
-    rdt_send_packet(pkt, bytes_to_send);
+    rdt_sender_send_packet(pkt, bytes_to_send);
     printf("Sent packet %d\n", ctrl->seq);
 
     /* Update control structure */
