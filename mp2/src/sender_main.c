@@ -351,11 +351,6 @@ void rdt_sender_state_in(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
  * */
 void rdt_sender_state_ss(rdt_sender_ctrl_info_t *ctrl,
                       char *sendbuf, char *recvbuf) {
-    /* Action taken when timed out */
-    if (rdt_sender_event_timeout(ctrl, sendbuf)) {
-        return;
-    }
-
     /* Action taken for received ACK */
     if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
         return;
@@ -370,6 +365,11 @@ void rdt_sender_state_ss(rdt_sender_ctrl_info_t *ctrl,
      * ssthresh */
     if (ctrl->cwnd >= ctrl->ssthresh) {
         ctrl->state = CA;
+        return;
+    }
+
+    /* Action taken when timed out */
+    if (rdt_sender_event_timeout(ctrl, sendbuf)) {
         return;
     }
 
@@ -389,15 +389,15 @@ void rdt_sender_state_ss(rdt_sender_ctrl_info_t *ctrl,
  * */
 void rdt_sender_state_ca(rdt_sender_ctrl_info_t *ctrl,
                       char *sendbuf, char *recvbuf) {
-    if (rdt_sender_event_timeout(ctrl, sendbuf)) {
-        return;
-    }
-
     if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
         return;
     }
 
     if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
+        return;
+    }
+
+    if (rdt_sender_event_timeout(ctrl, sendbuf)) {
         return;
     }
 
@@ -417,11 +417,11 @@ void rdt_sender_state_ca(rdt_sender_ctrl_info_t *ctrl,
  * */
 void rdt_sender_state_fr(rdt_sender_ctrl_info_t *ctrl,
                       char *sendbuf, char *recvbuf) {
-    if (rdt_sender_event_timeout(ctrl, sendbuf)) {
+    if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
         return;
     }
 
-    if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
+    if (rdt_sender_event_timeout(ctrl, sendbuf)) {
         return;
     }
 
