@@ -4,6 +4,7 @@
 main() {
     if [[ -z "$1" ]]; then
         echo "Usage: $0 [sender|receiver|dbg-sender]" >&2
+        exit 1
     else
         local sender receiver receiverip port filesent filewritten bytes;
         sender='./reliable_sender'
@@ -31,6 +32,10 @@ main() {
                         -ex 'b rdt_sender_state_fr' \
                         --args "$sender" "$receiverip" "$port" "$filesent" "$bytes"
                     break;
+                    ;;
+                *)
+                    echo "Usage: $0 [sender|receiver|dbg-sender]" >&2
+                    exit 1;
                     ;;
             esac
             shift
