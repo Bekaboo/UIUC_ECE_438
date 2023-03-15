@@ -170,7 +170,6 @@ void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
 
         /* Update control structure */
         ctrl->seq += bytes_to_send;
-        ctrl->bytes_remaining -= bytes_to_send;
 
         /* Start timer */
         timer_start(&ctrl->timer, TIMEOUT);
@@ -252,6 +251,8 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
             switch (ctrl->state) {
                 case SS:
                     /* Update control structure */
+                    ctrl->bytes_remaining -= min(DATA_LEN,
+                                                 ctrl->bytes_remaining);
                     ctrl->cwnd += DATA_LEN;
                     ctrl->dupack_cnt = 0;
                     ctrl->expack = recvpkt->header.ack
@@ -262,6 +263,8 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                     break;
 
                 case CA:
+                    ctrl->bytes_remaining -= min(DATA_LEN,
+                                                 ctrl->bytes_remaining);
                     ctrl->cwnd += DATA_LEN  * DATA_LEN / ctrl->cwnd;
                     ctrl->dupack_cnt = 0;
                     ctrl->expack = recvpkt->header.ack
@@ -272,6 +275,8 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                     break;
 
                 case FR:
+                    ctrl->bytes_remaining -= min(DATA_LEN,
+                                                 ctrl->bytes_remaining);
                     ctrl->cwnd = ctrl->ssthresh;
                     ctrl->dupack = 0;
                     ctrl->state = CA;
