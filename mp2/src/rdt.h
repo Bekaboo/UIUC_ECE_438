@@ -12,14 +12,14 @@
 #define TIMEOUT      1000 /* 1 second */
 
 /*
- * Status of reliable data transfer FSM
+ * States of reliable data transfer FSM
  *
  * IN: initial state (transmit first packet)
  * SS: slow start
  * CA: congestion avoidance
  * FR: fast recovery
  * */
-enum rdt_sender_status_t {IN, SS, CA, FR};
+enum rdt_sender_state_t {IN, SS, CA, FR};
 
 /* Timer */
 typedef struct rdt_timer_t {
@@ -32,7 +32,7 @@ typedef struct rdt_timer_t {
  * */
 typedef struct rdt_sender_ctrl_info_t {
     rdt_timer_t timer;               /* Timer                                    */
-    enum rdt_sender_status_t status; /* Current status                           */
+    enum rdt_sender_state_t state;   /* Current state                            */
     int seq;                         /* Current sequence number                  */
     int expack;                      /* Expected ACK number                      */
     int dupack;                      /* Duplicate ACK number                     */
@@ -58,7 +58,7 @@ typedef struct rdt_header_t {
  * */
 typedef struct rdt_packet_t {
     rdt_header_t header;      /* Header             */
-    char *data;               /* First byte of data */
+    char data;                /* First byte of data */
 } rdt_packet_t;
 
 #endif /* __RDT_H__ */
