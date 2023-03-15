@@ -228,7 +228,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
         return 0;
     }
 
-    if (recvlen <= 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    if (recvlen <= 0) {
         diep("recvfrom()");     // Error
     } else if (recvlen > 0) {   // Received data (ACK)
                                 // TODO: what if ACK is corrupted?
