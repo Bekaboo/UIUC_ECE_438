@@ -474,9 +474,11 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     char recvbuf[DATA_LEN + RDT_HEAD_LEN];  // Only holds one packet at a time
     char sendbuf[bytesToTransfer];
     memset(recvbuf, 0, DATA_LEN + RDT_HEAD_LEN);
-    if (bytesToTransfer != fread(sendbuf, 1, bytesToTransfer, fp)) {
-        fprintf(stderr, "Failed to read from file\n");
-        exit(1);
+    int bytes_read = fread(sendbuf, 1, bytesToTransfer, fp);
+    if (bytesToTransfer != bytes_read) {
+        fprintf(stderr, "Warning: "
+                "bytesToTransfer set to %llu but only %d bytes read\n",
+                bytesToTransfer, bytes_read);
     }
 
     /* Start transmission */
