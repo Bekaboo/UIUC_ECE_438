@@ -337,12 +337,6 @@ void rdt_sender_do_ss(rdt_sender_ctrl_info_t *ctrl,
         return;
     }
 
-    /* Fast retransmit and switch to state FR (fast recovery)
-     * if found more than 3 duplicate ACKs */
-    if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
-        return;
-    }
-
     /* Switch to status CA (congestion avoidance) if cwnd is larger than
      * ssthresh */
     if (ctrl->cwnd >= ctrl->ssthresh) {
