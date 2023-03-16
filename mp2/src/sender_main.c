@@ -60,17 +60,16 @@ rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
  *        ctrl - pointer to the control structure
  * Return: pointer to the packet if successful, exit otherwise
  * */
-rdt_packet_t* rdt_sender_make_packet(char *data, int len,
-                                 rdt_sender_ctrl_info_t* ctrl) {
+rdt_packet_t* rdt_sender_make_packet(char *data, int len, int rwnd, int seq) {
     rdt_packet_t *pkt = (rdt_packet_t *) malloc(sizeof(rdt_header_t) + len);
     if (pkt == NULL) {
-        fprintf(stderr, "Failed to make packet %d\n", ctrl->seq);
+        fprintf(stderr, "Failed to make packet %d\n", seq);
         exit(1);
     }
 
-    pkt->header.seq = ctrl->seq;
+    pkt->header.seq = seq;
     pkt->header.ack = 0;    /* Sender packet, ack not used */
-    pkt->header.rwnd = ctrl->rwnd;
+    pkt->header.rwnd = rwnd;
     pkt->header.data_len = len;
     memcpy(pkt->data, data, len);
 
@@ -143,7 +142,7 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
                                char* sendbuf, int seq) {
     int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
     rdt_packet_t *pkt = rdt_sender_make_packet(&sendbuf[seq],
-                                               bytes_to_send, ctrl);
+                                               bytes_to_send, ctrl->rwnd, seq);
 
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
         printf("Retransmit packet %d\n", seq);
@@ -167,7 +166,7 @@ void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
 
     int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
     rdt_packet_t *pkt = rdt_sender_make_packet(
-        &sendbuf[ctrl->seq], bytes_to_send, ctrl);
+        &sendbuf[ctrl->seq], bytes_to_send, ctrl->rwnd, ctrl->seq);
 
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
         printf("Transmit packet %d\n", ctrl->seq);
