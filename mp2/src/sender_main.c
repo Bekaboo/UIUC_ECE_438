@@ -139,17 +139,17 @@ int timer_timeout(rdt_timer_t *timer) {
  *        sendbuf - send (data) buffer
  * Return: None
  * */
-void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
+void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
+                               char* sendbuf, int seq) {
     int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
-    int pkt_seq = max(ctrl->seq - DATA_LEN, 0);
-    rdt_packet_t *pkt = rdt_sender_make_packet(&sendbuf[pkt_seq],
+    rdt_packet_t *pkt = rdt_sender_make_packet(&sendbuf[seq],
                                                bytes_to_send, ctrl);
 
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
-        printf("Retransmit packet %d\n", pkt_seq);
+        printf("Retransmit packet %d\n", seq);
         timer_start(&ctrl->timer, TIMEOUT);
     } else {
-        fprintf(stderr, "Failed to retransmit packet %d\n", pkt_seq);
+        fprintf(stderr, "Failed to retransmit packet %d\n", seq);
     }
 }
 
@@ -203,7 +203,7 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
     ctrl->dupack_cnt = 0;
     ctrl->state = SS;
 
-    rdt_sender_act_retransmit(ctrl, sendbuf);
+    rdt_sender_act_retransmit(ctrl, sendbuf, max(ctrl->seq - DATA_LEN, 0));
     return 1;
 }
 
@@ -317,7 +317,7 @@ int rdt_sender_event_dupackcount(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
             ctrl->ssthresh = ctrl->cwnd / 2;
             ctrl->cwnd = ctrl->ssthresh + 3 * DATA_LEN;
 
-            rdt_sender_act_retransmit(ctrl, sendbuf);
+            rdt_sender_act_retransmit(ctrl, sendbuf, ctrl->dupack);
 
             /* Switch to state FR */
             ctrl->state = FR;
