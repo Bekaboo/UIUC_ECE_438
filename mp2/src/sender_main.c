@@ -91,7 +91,7 @@ int rdt_sender_send_packet(rdt_sender_ctrl_info_t *ctrl, rdt_packet_t *pkt,
     if (!force &&
             (ctrl->seq + len - ctrl->expack > min(ctrl->rwnd, ctrl->cwnd))) {
         log(stderr,
-            "Not transmitting packet due to congestion/flow ctrl:\n"
+            "Not sending packet due to congestion/flow ctrl:\n"
             "                                seq:    %d\n"
             "                                len:    %d\n"
             "                                expack: %d\n"
