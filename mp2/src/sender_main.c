@@ -272,7 +272,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                         min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
                     /* Transmit a new packet */
-                        rdt_sender_act_transmit(ctrl, sendbuf);
+                    rdt_sender_act_transmit(ctrl, sendbuf);
                     break;
 
                 case CA:
@@ -284,7 +284,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                         min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
                     /* Transmit a new packet */
-                        rdt_sender_act_transmit(ctrl, sendbuf);
+                    rdt_sender_act_transmit(ctrl, sendbuf);
                     break;
 
                 case FR:
@@ -367,13 +367,13 @@ void rdt_sender_state_in(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
  * */
 void rdt_sender_state_ss(rdt_sender_ctrl_info_t *ctrl,
                       char *sendbuf, char *recvbuf) {
-    /* Action taken for received ACK */
-    if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
+    /* Action taken to check duplicate ACK count */
+    if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
         return;
     }
 
-    /* Action taken to check duplicate ACK count */
-    if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
+    /* Action taken for received ACK */
+    if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
         return;
     }
 
@@ -405,11 +405,11 @@ void rdt_sender_state_ss(rdt_sender_ctrl_info_t *ctrl,
  * */
 void rdt_sender_state_ca(rdt_sender_ctrl_info_t *ctrl,
                       char *sendbuf, char *recvbuf) {
-    if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
+    if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
         return;
     }
 
-    if (rdt_sender_event_dupackcount(ctrl, sendbuf)) {
+    if (rdt_sender_event_handleack(ctrl, sendbuf, recvbuf)) {
         return;
     }
 
