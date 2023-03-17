@@ -223,7 +223,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                            (struct sockaddr *) &si_other, (socklen_t *) &slen);
 
     /* No packet received */
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+    if (recvlen <= 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
         return 0;
     }
 
