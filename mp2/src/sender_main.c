@@ -509,7 +509,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     }
 
     /* Start transmission */
-    while (ctrl->seq < ctrl->bytes_total) {
+    while (ctrl->expack < ctrl->bytes_total) {
         switch (ctrl->state) {
             case IN: rdt_sender_state_in(ctrl, sendbuf); break;
             case SS: rdt_sender_state_ss(ctrl, sendbuf, recvbuf); break;
