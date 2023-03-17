@@ -17,7 +17,9 @@
         break;                                               \
       }                                                      \
     }                                                        \
-    fprintf(fd, "%s: ", _time_str);                          \
+    struct timeval _timeval;                                 \
+    gettimeofday(&_timeval, NULL);                           \
+    fprintf(fd, "%s.%06lu: ", _time_str, _timeval.tv_usec);  \
     fprintf(fd, __VA_ARGS__);                                \
 })
 
