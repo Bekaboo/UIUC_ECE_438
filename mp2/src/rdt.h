@@ -6,7 +6,7 @@
 #define MTU          1500
 #define IP_HEAD_LEN  20
 #define UDP_HEAD_LEN 8
-#define RDT_HEAD_LEN ((int) sizeof(rdt_header_t))
+#define RDT_HEAD_LEN (sizeof(rdt_header_t))
 #define DATA_LEN     (MTU - IP_HEAD_LEN - UDP_HEAD_LEN - RDT_HEAD_LEN)
 #define TIMEOUT      1000 /* 1 second */
 

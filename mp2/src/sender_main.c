@@ -202,7 +202,8 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
     ctrl->dupack_cnt = 0;
     ctrl->state = SS;
 
-    rdt_sender_act_retransmit(ctrl, sendbuf, max(0, ctrl->expack - DATA_LEN));
+    rdt_sender_act_retransmit(ctrl, sendbuf,
+                              max(0, (int)ctrl->expack - DATA_LEN));
     return 1;
 }
 
@@ -255,12 +256,12 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                 case SS:
                     /* Update control structure */
                     ctrl->seq = recvpkt->header.ack;
-                    ctrl->bytes_remaining -= min(DATA_LEN,
-                                                 ctrl->bytes_remaining);
+                    ctrl->bytes_remaining -=
+                        min((int)DATA_LEN, ctrl->bytes_remaining);
                     ctrl->cwnd += DATA_LEN;
                     ctrl->dupack_cnt = 0;
-                    ctrl->expack = recvpkt->header.ack
-                                    + min(DATA_LEN, ctrl->bytes_remaining);
+                    ctrl->expack = recvpkt->header.ack +
+                                   min((int)DATA_LEN, ctrl->bytes_remaining);
 
                     /* Transmit a new packet */
                     rdt_sender_act_transmit(ctrl, sendbuf);
@@ -268,12 +269,12 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
 
                 case CA:
                     ctrl->seq = recvpkt->header.ack;
-                    ctrl->bytes_remaining -= min(DATA_LEN,
-                                                 ctrl->bytes_remaining);
-                    ctrl->cwnd += DATA_LEN  * DATA_LEN / ctrl->cwnd;
+                    ctrl->bytes_remaining -=
+                        min((int)DATA_LEN, ctrl->bytes_remaining);
+                    ctrl->cwnd += DATA_LEN * DATA_LEN / ctrl->cwnd;
                     ctrl->dupack_cnt = 0;
-                    ctrl->expack = recvpkt->header.ack
-                                    + min(DATA_LEN, ctrl->bytes_remaining);
+                    ctrl->expack = recvpkt->header.ack +
+                                   min((int)DATA_LEN, ctrl->bytes_remaining);
 
                     /* Transmit a new packet */
                     rdt_sender_act_transmit(ctrl, sendbuf);
@@ -281,16 +282,17 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
 
                 case FR:
                     ctrl->seq = recvpkt->header.ack;
-                    ctrl->bytes_remaining -= min(DATA_LEN,
-                                                 ctrl->bytes_remaining);
+                    ctrl->bytes_remaining -=
+                        min(DATA_LEN, ctrl->bytes_remaining);
                     ctrl->cwnd = ctrl->ssthresh;
                     ctrl->dupack = 0;
                     ctrl->state = CA;
                     ctrl->expack = recvpkt->header.ack
-                                    + min(DATA_LEN, ctrl->bytes_remaining);
+                        + min(DATA_LEN, ctrl->bytes_remaining);
                     break;
 
-                default: break;
+                default:
+                    break;
             }
         }
     }
