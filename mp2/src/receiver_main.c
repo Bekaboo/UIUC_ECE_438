@@ -1,3 +1,4 @@
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,7 +45,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     si_me.sin_family = AF_INET;
     si_me.sin_port = htons(myUDPport);
     si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-    printf("Now binding\n");
+    log(stdout, "Now binding\n");
     if (bind(s, (struct sockaddr*) &si_me, sizeof (si_me)) == -1)
         diep("bind");
 
@@ -76,7 +77,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         if ((recv_len = recvfrom(s, pkt, RDT_HEAD_LEN + DATA_LEN, 0, \
             (struct sockaddr *) &si_other, (socklen_t *) &slen)) == -1)
             diep("recvfrom");
-        printf("Received packet of length %d from %s:%d\n", \
+        log(stdout, "Received packet of length %d from %s:%d\n", \
             recv_len, inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
 
         /* Buffer the packet */
@@ -119,7 +120,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     /* Done */
 
     close(s);
-	printf("Data written to file %s\n", destinationFile);
+	log(stdout, "Data written to file %s\n", destinationFile);
     return;
 }
 
@@ -131,7 +132,7 @@ int main(int argc, char** argv) {
     unsigned short int udpPort;
 
     if (argc != 3) {
-        fprintf(stderr, "usage: %s UDP_port filename_to_write\n\n", argv[0]);
+        log(stderr, "usage: %s UDP_port filename_to_write\n\n", argv[0]);
         exit(1);
     }
 

@@ -1,5 +1,5 @@
 #include "rdt.h"
-#include "alg.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +21,7 @@ struct sockaddr_in si_other;
 int s, slen;
 
 void diep(char *s) {
-    perror(s);
+    log(stderr, "%s", s);
     exit(1);
 }
 
@@ -63,7 +63,7 @@ rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
 rdt_packet_t* rdt_sender_make_packet(char *data, int len, int rwnd, int seq) {
     rdt_packet_t *pkt = (rdt_packet_t *) malloc(sizeof(rdt_header_t) + len);
     if (pkt == NULL) {
-        fprintf(stderr, "Failed to make packet %d\n", seq);
+        log(stderr, "Failed to make packet %d\n", seq);
         exit(1);
     }
 
@@ -145,10 +145,10 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
                                                bytes_to_send, ctrl->rwnd, seq);
 
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
-        printf("Retransmit packet %d\n", seq);
+        log(stderr, "Retransmit packet %d\n", seq);
         timer_start(&ctrl->timer, TIMEOUT);
     } else {
-        fprintf(stderr, "Failed to retransmit packet %d\n", seq);
+        log(stderr, "Failed to retransmit packet %d\n", seq);
     }
 }
 
@@ -169,7 +169,7 @@ void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
         &sendbuf[ctrl->seq], bytes_to_send, ctrl->rwnd, ctrl->seq);
 
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
-        printf("Transmit packet %d\n", ctrl->seq);
+        log(stdout, "Transmit packet %d\n", ctrl->seq);
 
         /* Update control structure */
         ctrl->seq += bytes_to_send;
@@ -177,7 +177,7 @@ void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
         /* Start timer */
         timer_start(&ctrl->timer, TIMEOUT);
     } else {
-        fprintf(stderr, "Failed to transmit packet %d\n", ctrl->seq);
+        log(stderr, "Failed to transmit packet %d\n", ctrl->seq);
     }
 }
 
@@ -194,7 +194,7 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
         return 0;
     }
 
-    printf("Timeout detected\n");
+    log(stderr, "Timeout detected\n");
 
     /* Update control structure */
     ctrl->ssthresh = ctrl->cwnd / 2;
@@ -232,7 +232,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                                 // TODO: what if ACK is corrupted?
         rdt_packet_t *recvpkt = (rdt_packet_t *) recvbuf;
         if (recvpkt->header.ack == ctrl->dupack) {          // Duplicate ACK
-            printf("Received duplicate ACK %d\n", recvpkt->header.ack);
+            log(stderr, "Received duplicate ACK %d\n", recvpkt->header.ack);
             if (ctrl->state == FR) {
                 ctrl->cwnd += DATA_LEN;
             } else {
@@ -240,7 +240,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
             }
         } else if (recvpkt->header.ack < ctrl->expack) {    // Old ACK
                                                             // (1st dup ACK)
-            printf("Received duplicate ACK %d\n", recvpkt->header.ack);
+            log(stderr, "Received duplicate ACK %d\n", recvpkt->header.ack);
             if (ctrl->state == FR) {
                 ctrl->cwnd += DATA_LEN;
                 rdt_sender_act_transmit(ctrl, sendbuf);
@@ -249,7 +249,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                 ctrl->dupack_cnt = 1;
             }
         } else {                                            // New ACK
-            printf("Received new ACK %d\n", recvpkt->header.ack);
+            log(stdout, "Received new ACK %d\n", recvpkt->header.ack);
             switch (ctrl->state) {
                 case SS:
                     /* Update control structure */
@@ -450,7 +450,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     FILE *fp;
     fp = fopen(filename, "rb");
     if (fp == NULL) {
-        printf("Could not open file to send.");
+        log(stderr, "Could not open file to send.");
         exit(1);
     }
 
@@ -472,7 +472,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     si_other.sin_port = htons(hostUDPport);
     /* ?? */
     if (inet_aton(hostname, &si_other.sin_addr) == 0) {
-        fprintf(stderr, "inet_aton() failed\n");
+        log(stderr, "inet_aton() failed\n");
         exit(1);
     }
 
@@ -485,15 +485,15 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     memset(recvbuf, 0, DATA_LEN + RDT_HEAD_LEN);
     int bytesRead = fread(sendbuf, 1, bytesToTransfer, fp);
     if (bytesToTransfer != bytesRead) {
-        fprintf(stderr, "Warning: "
-                "bytesToTransfer set to %llu but only %d bytes read\n",
-                bytesToTransfer, bytesRead);
+        log(stderr, "Warning: "
+            "bytesToTransfer set to %llu but only %d bytes read\n",
+            bytesToTransfer, bytesRead);
     }
 
     /* Initialize control structure for new RDT FSM */
     rdt_sender_ctrl_info_t *ctrl = rdt_sender_ctrl_init(bytesRead);
     if (ctrl == NULL) {
-        fprintf(stderr, "Failed to initialize control structure for RDT\n");
+        log(stderr, "Failed to initialize control structure for RDT\n");
         exit(1);
     }
 
@@ -508,7 +508,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     }
 
     /* Close the socket */
-    printf("Closing the socket\n");
+    log(stderr, "Closing the socket\n");
     close(s);
     /* Release memory occupied by the RDT control struct */
     free(ctrl);
@@ -525,7 +525,9 @@ int main(int argc, char** argv) {
     unsigned long long int numBytes;
 
     if (argc != 5) {
-        fprintf(stderr, "usage: %s receiver_hostname receiver_port filename_to_xfer bytes_to_xfer\n\n", argv[0]);
+        log(stderr, "usage: "
+            "%s receiver_hostname receiver_port "
+            "filename_to_xfer bytes_to_xfer\n\n", argv[0]);
         exit(1);
     }
     udpPort = (unsigned short int) atoi(argv[2]);
