@@ -48,6 +48,7 @@ rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
     rdt_ctrl->cwnd = DATA_LEN;
     rdt_ctrl->ssthresh = 64 * 1024;
     rdt_ctrl->bytes_total = bytesToTransfer;
+    rdt_ctrl->timer.on = 0;
 
     return rdt_ctrl;
 }
@@ -115,11 +116,25 @@ int rdt_sender_send_packet(rdt_sender_ctrl_info_t *ctrl, rdt_packet_t *pkt,
  *
  * Input: timer - pointer to the timer
  *        timeout - timeout value
+ *        seq - sequence number of the packet being timing
  * Return: None
  * */
-void timer_start(rdt_timer_t *timer, int timeout) {
+void timer_start(rdt_timer_t *timer, int timeout, int seq) {
+    timer->on = 1;
     timer->timeout = timeout;
+    timer->seq = seq;
     gettimeofday(&timer->start, NULL);
+}
+
+/*
+ * Stop the timer
+ *
+ * Input: timer - pointer to the timer
+ *
+ * Return: None
+ * */
+void timer_stop(rdt_timer_t *timer) {
+    timer->on = 0;
 }
 
 /*
@@ -133,7 +148,7 @@ int timer_timeout(rdt_timer_t *timer) {
     gettimeofday(&now, NULL);
 
     /* Check if timed out */
-    if ((now.tv_sec - timer->start.tv_sec) * 1000000
+    if (timer->on && (now.tv_sec - timer->start.tv_sec) * 1000000
             + (now.tv_usec - timer->start.tv_usec) > timer->timeout) {
         return 1;
     } else {
@@ -156,7 +171,9 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
 
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send, 1)) {
         log(stderr, "Retransmit packet %d\n", seq);
-        timer_start(&ctrl->timer, TIMEOUT);
+        /* Start timer if not currently timing previous packet */
+        if (!ctrl->timer.on)
+            timer_start(&ctrl->timer, TIMEOUT, seq);
     } else {
         log(stderr, "Failed to retransmit packet %d\n", seq);
     }
@@ -185,11 +202,13 @@ int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
 
     log(stdout, "Transmit packet %d\n", ctrl->seq);
 
+    /* Start timer if not currently timing previous packet */
+    if (!ctrl->timer.on)
+        timer_start(&ctrl->timer, TIMEOUT, ctrl->seq);
+
     /* Update control structure */
     ctrl->seq += bytes_to_send;
 
-    /* Start timer */
-    timer_start(&ctrl->timer, TIMEOUT);
     return 1;
 }
 
@@ -215,7 +234,7 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
     ctrl->state = SS;
 
     rdt_sender_act_retransmit(ctrl, sendbuf,
-                              max(0, (int)(ctrl->expack - DATA_LEN)));
+                              max(0, ctrl->timer.seq));
     return 1;
 }
 
@@ -239,66 +258,76 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
             return 0;           // No packet received
         }
         diep("recvfrom()");     // Error
-    } else {                    // Received data (ACK)
-                                // TODO: what if ACK is corrupted?
-        rdt_packet_t *recvpkt = (rdt_packet_t *) recvbuf;
-        ctrl->rwnd = recvpkt->header.rwnd;
-        if (recvpkt->header.ack == ctrl->dupack) {          // Duplicate ACK
-            log(stderr, "Received duplicate ACK %d\n", recvpkt->header.ack);
-            if (ctrl->state == FR) {
+    }
+
+    /* Received data (ACK) */
+    /* TODO: what if ACK is corrupted? */
+    rdt_packet_t *recvpkt = (rdt_packet_t *) recvbuf;
+    ctrl->rwnd = recvpkt->header.rwnd;
+    if (recvpkt->header.ack == ctrl->dupack) {          // Duplicate ACK
+        log(stderr, "Received duplicate ACK %d\n", recvpkt->header.ack);
+        if (ctrl->state == FR) {
+            ctrl->cwnd += DATA_LEN;
+        } else {
+            ctrl->dupack_cnt++;
+        }
+    } else if (recvpkt->header.ack < ctrl->expack) {    // Old ACK
+                                                        // (1st dup ACK)
+        log(stderr, "Received duplicate ACK %d\n", recvpkt->header.ack);
+        if (ctrl->state == FR) {
+            ctrl->cwnd += DATA_LEN;
+            rdt_sender_act_transmit(ctrl, sendbuf);
+        } else {
+            ctrl->dupack = recvpkt->header.ack;
+            ctrl->dupack_cnt = 1;
+        }
+    } else {                                            // New ACK
+        log(stdout, "Received new ACK %d\n", recvpkt->header.ack);
+        switch (ctrl->state) {
+            case SS:
+                /* Update control structure */
                 ctrl->cwnd += DATA_LEN;
-            } else {
-                ctrl->dupack_cnt++;
-            }
-        } else if (recvpkt->header.ack < ctrl->expack) {    // Old ACK
-                                                            // (1st dup ACK)
-            log(stderr, "Received duplicate ACK %d\n", recvpkt->header.ack);
-            if (ctrl->state == FR) {
-                ctrl->cwnd += DATA_LEN;
+                ctrl->dupack_cnt = 0;
+                ctrl->expack =
+                    recvpkt->header.ack +
+                    min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
+
+                /* Stop the timer */
+                timer_stop(&ctrl->timer);
+
+                /* Transmit a new packet */
                 rdt_sender_act_transmit(ctrl, sendbuf);
-            } else {
-                ctrl->dupack = recvpkt->header.ack;
-                ctrl->dupack_cnt = 1;
-            }
-        } else {                                            // New ACK
-            log(stdout, "Received new ACK %d\n", recvpkt->header.ack);
-            switch (ctrl->state) {
-                case SS:
-                    /* Update control structure */
-                    ctrl->cwnd += DATA_LEN;
-                    ctrl->dupack_cnt = 0;
-                    ctrl->expack =
-                        recvpkt->header.ack +
-                        min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
+                break;
 
-                    /* Transmit a new packet */
-                    rdt_sender_act_transmit(ctrl, sendbuf);
-                    break;
+            case CA:
+                ctrl->seq = recvpkt->header.ack;
+                ctrl->cwnd += DATA_LEN * DATA_LEN / ctrl->cwnd;
+                ctrl->dupack_cnt = 0;
+                ctrl->expack =
+                    recvpkt->header.ack +
+                    min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
-                case CA:
-                    ctrl->seq = recvpkt->header.ack;
-                    ctrl->cwnd += DATA_LEN * DATA_LEN / ctrl->cwnd;
-                    ctrl->dupack_cnt = 0;
-                    ctrl->expack =
-                        recvpkt->header.ack +
-                        min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
+                /* Stop the timer */
+                timer_stop(&ctrl->timer);
 
-                    /* Transmit a new packet */
-                    rdt_sender_act_transmit(ctrl, sendbuf);
-                    break;
+                /* Transmit a new packet */
+                rdt_sender_act_transmit(ctrl, sendbuf);
+                break;
 
-                case FR:
-                    ctrl->cwnd = ctrl->ssthresh;
-                    ctrl->dupack_cnt = 0;
-                    ctrl->state = CA;
-                    ctrl->expack =
-                        recvpkt->header.ack +
-                        min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
-                    break;
+            case FR:
+                ctrl->cwnd = ctrl->ssthresh;
+                ctrl->dupack_cnt = 0;
+                ctrl->state = CA;
+                ctrl->expack =
+                    recvpkt->header.ack +
+                    min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
-                default:
-                    break;
-            }
+                /* Stop the timer */
+                timer_stop(&ctrl->timer);
+                break;
+
+            default:
+                break;
         }
     }
 
