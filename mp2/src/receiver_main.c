@@ -77,8 +77,8 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         if ((recv_len = recvfrom(s, pkt, RDT_HEAD_LEN + DATA_LEN, 0, \
             (struct sockaddr *) &si_other, (socklen_t *) &slen)) == -1)
             diep("recvfrom");
-        log(stdout, "Received packet of length %d from %s:%d\n", \
-            recv_len, inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+        log(stdout, "Received packet %d of length %d from %s:%d\n", \
+            pkt->header.seq, recv_len, inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
 
         /* Buffer the packet */
         int pktnum = pkt->header.seq / DATA_LEN;
@@ -106,6 +106,8 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         /* To keep things simple, we don't wait for 500ms */
         rdt_packet_t* ack = make_ack(next * DATA_LEN, \
             MAX_BUFFERED_PACKETS - (tail - head));      // nslot = "tail" ~ MAX_BUFFERED_PACKETS
+        log(stdout, "Sending ACK %d, rwnd = %d, head = %d, next = %d, tail = %d\n", \
+            ack->header.ack, ack->header.rwnd, head, next, tail);
         if (sendto(s, ack, RDT_HEAD_LEN, 0, \
             (struct sockaddr *) &si_other, slen) == -1)
             diep("sendto");
