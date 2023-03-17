@@ -140,7 +140,7 @@ int timer_timeout(rdt_timer_t *timer) {
  * */
 void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
                                char* sendbuf, int seq) {
-    int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
+    int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_remaining);
     rdt_packet_t *pkt = rdt_sender_make_packet(&sendbuf[seq],
                                                bytes_to_send, ctrl->rwnd, seq);
 
@@ -164,7 +164,7 @@ void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
         return;
     }
 
-    int bytes_to_send = min(DATA_LEN, ctrl->bytes_remaining);
+    int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_remaining);
     rdt_packet_t *pkt = rdt_sender_make_packet(
         &sendbuf[ctrl->seq], bytes_to_send, ctrl->rwnd, ctrl->seq);
 
