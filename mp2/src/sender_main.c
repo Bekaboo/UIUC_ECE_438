@@ -253,7 +253,6 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
             switch (ctrl->state) {
                 case SS:
                     /* Update control structure */
-                    ctrl->seq = recvpkt->header.ack;
                     ctrl->cwnd += DATA_LEN;
                     ctrl->dupack_cnt = 0;
                     ctrl->expack =
@@ -261,7 +260,8 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                         min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
                     /* Transmit a new packet */
-                    rdt_sender_act_transmit(ctrl, sendbuf);
+                    if (recvpkt->header.ack >= ctrl->seq)
+                        rdt_sender_act_transmit(ctrl, sendbuf);
                     break;
 
                 case CA:
@@ -273,11 +273,11 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                         min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
                     /* Transmit a new packet */
-                    rdt_sender_act_transmit(ctrl, sendbuf);
+                    if (recvpkt->header.ack >= ctrl->seq)
+                        rdt_sender_act_transmit(ctrl, sendbuf);
                     break;
 
                 case FR:
-                    ctrl->seq = recvpkt->header.ack;
                     ctrl->cwnd = ctrl->ssthresh;
                     ctrl->dupack = 0;
                     ctrl->state = CA;
