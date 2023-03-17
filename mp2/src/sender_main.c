@@ -202,7 +202,7 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
     ctrl->dupack_cnt = 0;
     ctrl->state = SS;
 
-    rdt_sender_act_retransmit(ctrl, sendbuf, ctrl->expack);
+    rdt_sender_act_retransmit(ctrl, sendbuf, max(0, ctrl->expack - DATA_LEN));
     return 1;
 }
 
@@ -231,6 +231,7 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
     } else if (recvlen > 0) {   // Received data (ACK)
                                 // TODO: what if ACK is corrupted?
         rdt_packet_t *recvpkt = (rdt_packet_t *) recvbuf;
+        ctrl->rwnd = recvpkt->header.rwnd;
         if (recvpkt->header.ack == ctrl->dupack) {          // Duplicate ACK
             log(stderr, "Received duplicate ACK %d\n", recvpkt->header.ack);
             if (ctrl->state == FR) {
