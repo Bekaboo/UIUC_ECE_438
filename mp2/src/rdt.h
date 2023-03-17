@@ -39,7 +39,7 @@ typedef struct rdt_sender_ctrl_info_t {
     int rwnd;                 /* Self's receive window size (byte)        */
     int cwnd;                 /* Congestion window size (byte)            */
     int ssthresh;             /* Slow start threshold (byte)              */
-    int bytes_remaining;      /* Number of bytes remaining to send (byte) */
+    int bytes_total;        /* Number of bytes to send                  */
 } rdt_sender_ctrl_info_t;
 
 /*

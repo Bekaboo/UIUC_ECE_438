@@ -47,7 +47,7 @@ rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
     rdt_ctrl->rwnd = DATA_LEN;
     rdt_ctrl->cwnd = DATA_LEN;
     rdt_ctrl->ssthresh = 64 * 1024;
-    rdt_ctrl->bytes_remaining = bytesToTransfer;
+    rdt_ctrl->bytes_total = bytesToTransfer;
 
     return rdt_ctrl;
 }
@@ -140,7 +140,7 @@ int timer_timeout(rdt_timer_t *timer) {
  * */
 void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
                                char* sendbuf, int seq) {
-    int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_remaining);
+    int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
     rdt_packet_t *pkt = rdt_sender_make_packet(&sendbuf[seq],
                                                bytes_to_send, ctrl->rwnd, seq);
 
@@ -160,11 +160,11 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
  * Return: None
  * */
 void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
-    if (ctrl->bytes_remaining <= 0) {
+    if (ctrl->bytes_total - ctrl->seq <= 0) {
         return;
     }
 
-    int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_remaining);
+    int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
     rdt_packet_t *pkt = rdt_sender_make_packet(
         &sendbuf[ctrl->seq], bytes_to_send, ctrl->rwnd, ctrl->seq);
 
@@ -254,12 +254,11 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                 case SS:
                     /* Update control structure */
                     ctrl->seq = recvpkt->header.ack;
-                    ctrl->bytes_remaining -=
-                        min((int)DATA_LEN, ctrl->bytes_remaining);
                     ctrl->cwnd += DATA_LEN;
                     ctrl->dupack_cnt = 0;
-                    ctrl->expack = recvpkt->header.ack +
-                                   min((int)DATA_LEN, ctrl->bytes_remaining);
+                    ctrl->expack =
+                        recvpkt->header.ack +
+                        min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
                     /* Transmit a new packet */
                     rdt_sender_act_transmit(ctrl, sendbuf);
@@ -267,12 +266,11 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
 
                 case CA:
                     ctrl->seq = recvpkt->header.ack;
-                    ctrl->bytes_remaining -=
-                        min((int)DATA_LEN, ctrl->bytes_remaining);
                     ctrl->cwnd += DATA_LEN * DATA_LEN / ctrl->cwnd;
                     ctrl->dupack_cnt = 0;
-                    ctrl->expack = recvpkt->header.ack +
-                                   min((int)DATA_LEN, ctrl->bytes_remaining);
+                    ctrl->expack =
+                        recvpkt->header.ack +
+                        min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
                     /* Transmit a new packet */
                     rdt_sender_act_transmit(ctrl, sendbuf);
@@ -280,13 +278,12 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
 
                 case FR:
                     ctrl->seq = recvpkt->header.ack;
-                    ctrl->bytes_remaining -=
-                        min((int)DATA_LEN, ctrl->bytes_remaining);
                     ctrl->cwnd = ctrl->ssthresh;
                     ctrl->dupack = 0;
                     ctrl->state = CA;
-                    ctrl->expack = recvpkt->header.ack
-                        + min((int)DATA_LEN, ctrl->bytes_remaining);
+                    ctrl->expack =
+                        recvpkt->header.ack +
+                        min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
                     break;
 
                 default:
@@ -499,7 +496,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     }
 
     /* Start transmission */
-    while (ctrl->bytes_remaining > 0) {
+    while (ctrl->seq < ctrl->bytes_total) {
         switch (ctrl->state) {
             case IN: rdt_sender_state_in(ctrl, sendbuf); break;
             case SS: rdt_sender_state_ss(ctrl, sendbuf, recvbuf); break;
