@@ -116,6 +116,9 @@ main() {
                         -ex 'b rdt_sender_state_ss'            \
                         -ex 'b rdt_sender_state_ca'            \
                         -ex 'b rdt_sender_state_fr'            \
+                        -ex 'b rdt_sender_event_timeout'       \
+                        -ex 'b rdt_sender_event_handleack'     \
+                        -ex 'b rdt_sender_event_dupackcount'   \
                         --args "$sender" "$receiverip" "$port" \
                                "$filesent" "$bytes"
                 else
