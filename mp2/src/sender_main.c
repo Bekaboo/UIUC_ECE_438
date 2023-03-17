@@ -123,7 +123,7 @@ int timer_timeout(rdt_timer_t *timer) {
     gettimeofday(&now, NULL);
 
     /* Check if timed out */
-    if ((now.tv_sec - timer->start.tv_sec) * 1000
+    if ((now.tv_sec - timer->start.tv_sec) * 1000000
             + (now.tv_usec - timer->start.tv_usec) > timer->timeout) {
         return 1;
     } else {
