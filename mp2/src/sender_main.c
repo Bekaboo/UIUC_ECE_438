@@ -157,28 +157,30 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
  *
  * Input: ctrl - pointer to the control structure
  *        sendbuf - send (data) buffer
- * Return: None
+ * Return: 1 if packet is sent, 0 otherwise
  * */
-void rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
+int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
     if (ctrl->bytes_total - ctrl->seq <= 0) {
-        return;
+        return 0;
     }
 
     int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
     rdt_packet_t *pkt = rdt_sender_make_packet(
         &sendbuf[ctrl->seq], bytes_to_send, ctrl->rwnd, ctrl->seq);
 
-    if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
-        log(stdout, "Transmit packet %d\n", ctrl->seq);
-
-        /* Update control structure */
-        ctrl->seq += bytes_to_send;
-
-        /* Start timer */
-        timer_start(&ctrl->timer, TIMEOUT);
-    } else {
+    if (!rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
         log(stderr, "Failed to transmit packet %d\n", ctrl->seq);
+        return 0;
     }
+
+    log(stdout, "Transmit packet %d\n", ctrl->seq);
+
+    /* Update control structure */
+    ctrl->seq += bytes_to_send;
+
+    /* Start timer */
+    timer_start(&ctrl->timer, TIMEOUT);
+    return 1;
 }
 
 /*
@@ -334,7 +336,10 @@ int rdt_sender_event_dupackcount(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
  * */
 void rdt_sender_state_in(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
     /* Send the first packet */
-    rdt_sender_act_transmit(ctrl, sendbuf);
+    while(!rdt_sender_act_transmit(ctrl, sendbuf));
+
+    /* First packet sent, update expected ACK # */
+    ctrl->expack = min((int)DATA_LEN, ctrl->bytes_total);
 
     /* Switch to SS */
     ctrl->state = SS;
@@ -501,6 +506,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
             case CA: rdt_sender_state_ca(ctrl, sendbuf, recvbuf); break;
             case FR: rdt_sender_state_fr(ctrl, sendbuf, recvbuf); break;
         };
+        usleep(5000);
     }
 
     /* Close the socket */
