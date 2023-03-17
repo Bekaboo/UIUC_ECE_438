@@ -260,7 +260,6 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                         min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
                     /* Transmit a new packet */
-                    if (recvpkt->header.ack >= ctrl->seq)
                         rdt_sender_act_transmit(ctrl, sendbuf);
                     break;
 
@@ -273,13 +272,12 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                         min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
 
                     /* Transmit a new packet */
-                    if (recvpkt->header.ack >= ctrl->seq)
                         rdt_sender_act_transmit(ctrl, sendbuf);
                     break;
 
                 case FR:
                     ctrl->cwnd = ctrl->ssthresh;
-                    ctrl->dupack = 0;
+                    ctrl->dupack_cnt = 0;
                     ctrl->state = CA;
                     ctrl->expack =
                         recvpkt->header.ack +
