@@ -222,14 +222,12 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
     int recvlen = recvfrom(s, recvbuf, DATA_LEN + RDT_HEAD_LEN, 0,
                            (struct sockaddr *) &si_other, (socklen_t *) &slen);
 
-    /* No packet received */
-    if (recvlen <= 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-        return 0;
-    }
-
-    if (recvlen <= 0) {
+    if (recvlen < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return 0;           // No packet received
+        }
         diep("recvfrom()");     // Error
-    } else if (recvlen > 0) {   // Received data (ACK)
+    } else {                    // Received data (ACK)
                                 // TODO: what if ACK is corrupted?
         rdt_packet_t *recvpkt = (rdt_packet_t *) recvbuf;
         ctrl->rwnd = recvpkt->header.rwnd;
