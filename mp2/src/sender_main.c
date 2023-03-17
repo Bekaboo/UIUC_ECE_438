@@ -82,12 +82,14 @@ rdt_packet_t* rdt_sender_make_packet(char *data, int len, int rwnd, int seq) {
  * Input: ctrl - pointer to the control structure
  *        pkt - pointer to the packet
  *        len - length of the data, EXCLUDING RDT HEADER
+ *        force - force sending the packet, bypassing congestion/flow control
  * Output: packet_sent - 1 if packet is sent; 0 otherwise
  * */
-int rdt_sender_send_packet(rdt_sender_ctrl_info_t *ctrl,
-                            rdt_packet_t *pkt, int len) {
+int rdt_sender_send_packet(rdt_sender_ctrl_info_t *ctrl, rdt_packet_t *pkt,
+                           int len, int force) {
     /* Congestion control and flow control */
-    if (ctrl->seq + len - ctrl->expack > min(ctrl->rwnd, ctrl->cwnd)) {
+    if (!force &&
+            (ctrl->seq + len - ctrl->expack > min(ctrl->rwnd, ctrl->cwnd))) {
         log(stderr,
             "Not transmitting packet due to congestion/flow ctrl:\n"
             "                                seq:    %d\n"
@@ -152,7 +154,7 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
     rdt_packet_t *pkt = rdt_sender_make_packet(&sendbuf[seq],
                                                bytes_to_send, ctrl->rwnd, seq);
 
-    if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
+    if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send, 1)) {
         log(stderr, "Retransmit packet %d\n", seq);
         timer_start(&ctrl->timer, TIMEOUT);
     } else {
@@ -176,7 +178,7 @@ int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, char* sendbuf) {
     rdt_packet_t *pkt = rdt_sender_make_packet(
         &sendbuf[ctrl->seq], bytes_to_send, ctrl->rwnd, ctrl->seq);
 
-    if (!rdt_sender_send_packet(ctrl, pkt, bytes_to_send)) {
+    if (!rdt_sender_send_packet(ctrl, pkt, bytes_to_send, 0)) {
         log(stderr, "Failed to transmit packet %d\n", ctrl->seq);
         return 0;
     }
