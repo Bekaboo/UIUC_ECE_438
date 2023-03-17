@@ -113,7 +113,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             diep("sendto");
 
         /* Break at EOF */
-        if (pkt->header.data_len < DATA_LEN) break;
+        if (pkt->header.data_len < DATA_LEN && head == tail) break;
 
     }
 
