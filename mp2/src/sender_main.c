@@ -202,7 +202,7 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, char *sendbuf) {
     ctrl->dupack_cnt = 0;
     ctrl->state = SS;
 
-    rdt_sender_act_retransmit(ctrl, sendbuf, max(ctrl->seq - DATA_LEN, 0));
+    rdt_sender_act_retransmit(ctrl, sendbuf, ctrl->expack);
     return 1;
 }
 
