@@ -11,6 +11,8 @@
 #define PACKET_LEN   (RDT_HEAD_LEN + DATA_LEN)
 #define TIMEOUT      50000 /* 50 milliseconds */
 
+#define pktbuf_idx(i) (pktbuf + PACKET_LEN * (i))       // used in receiver
+
 /*
  * States of reliable data transfer FSM
  *

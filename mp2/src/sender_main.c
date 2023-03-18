@@ -312,7 +312,6 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                 break;
 
             case CA:
-                ctrl->seq = recvpkt->header.ack;
                 ctrl->cwnd += DATA_LEN * DATA_LEN / ctrl->cwnd;
                 ctrl->dupack_cnt = 0;
                 ctrl->expack =
