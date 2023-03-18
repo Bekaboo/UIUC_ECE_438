@@ -1,0 +1,4 @@
+compilation of version 1 failed with:
+make: *** No targets specified and no makefile found.  Stop.
+ 
+
