@@ -172,11 +172,12 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
     rdt_packet_t *pkt = rdt_sender_make_packet(content,
                                                bytes_to_send, ctrl->rwnd, seq);
 
+    /* Start timer if not currently timing previous packet */
+    if (!ctrl->timer.on)
+        timer_start(&ctrl->timer, TIMEOUT, seq);
+
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send, 1)) {
         log(stderr, "Retransmit packet %d\n", seq);
-        /* Start timer if not currently timing previous packet */
-        if (!ctrl->timer.on)
-            timer_start(&ctrl->timer, TIMEOUT, seq);
     } else {
         log(stderr, "Failed to retransmit packet %d\n", seq);
     }
@@ -194,6 +195,10 @@ int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, FILE* sendbuf) {
         return 0;
     }
 
+    /* Start timer if not currently timing previous packet */
+    if (!ctrl->timer.on)
+        timer_start(&ctrl->timer, TIMEOUT, ctrl->seq);
+
     int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
     char content[DATA_LEN];
     fseek(sendbuf, ctrl->seq, SEEK_SET);
@@ -207,10 +212,6 @@ int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, FILE* sendbuf) {
     }
 
     log(stdout, "Transmit packet %d\n", ctrl->seq);
-
-    /* Start timer if not currently timing previous packet */
-    if (!ctrl->timer.on)
-        timer_start(&ctrl->timer, TIMEOUT, ctrl->seq);
 
     /* Update control structure */
     ctrl->seq += bytes_to_send;
