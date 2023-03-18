@@ -9,7 +9,7 @@
 #define RDT_HEAD_LEN (sizeof(rdt_header_t))
 #define DATA_LEN     (MTU - IP_HEAD_LEN - UDP_HEAD_LEN - RDT_HEAD_LEN)
 #define PACKET_LEN   (RDT_HEAD_LEN + DATA_LEN)
-#define TIMEOUT      50000 /* 1 millisecond */
+#define TIMEOUT      50000 /* 50 milliseconds */
 
 /*
  * States of reliable data transfer FSM
