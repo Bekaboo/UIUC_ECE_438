@@ -6,6 +6,8 @@
 #include <string.h>
 #include <time.h>
 
+#define pktbuf_idx(i) (pktbuf + PACKET_LEN * (i))
+
 #define log(fd, ...) ({                                      \
     char _time_str[32];                                      \
     struct tm *_timeinfo = localtime(&(time_t){time(NULL)}); \
