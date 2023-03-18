@@ -48,10 +48,11 @@ typedef struct rdt_sender_ctrl_info_t {
  * Extra information in each packet for reliable data transfer
  * */
 typedef struct rdt_header_t {
-    int seq;                  /* Sequence number               */
-    int ack;                  /* ACK number                    */
-    int rwnd;                 /* Receiver window size (byte)   */
-    int data_len;             /* Data length (byte)            */
+    int seq;                  /* Sequence number                    */
+    int ack;                  /* ACK number                         */
+    int rwnd;                 /* Receiver window size (byte)        */
+    int data_len;             /* Data length (byte)                 */
+    char last_pkg;            /* If the package is the last package */
 } rdt_header_t;
 
 /*

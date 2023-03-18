@@ -57,11 +57,13 @@ rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
  * Make packet with given data
  *
  * Input: data - pointer to the data to be sent
- *        len  - length of the data
  *        ctrl - pointer to the control structure
+ *        seq - sequence number of the packet
  * Return: pointer to the packet if successful, exit otherwise
  * */
-rdt_packet_t* rdt_sender_make_packet(char *data, int len, int rwnd, int seq) {
+rdt_packet_t *rdt_sender_make_packet(char *data, rdt_sender_ctrl_info_t *ctrl,
+                                     int seq) {
+    int len = min(DATA_LEN, ctrl->bytes_total - seq);
     rdt_packet_t *pkt = (rdt_packet_t *) malloc(sizeof(rdt_header_t) + len);
     if (pkt == NULL) {
         log(stderr, "Failed to make packet %d\n", seq);
@@ -70,8 +72,9 @@ rdt_packet_t* rdt_sender_make_packet(char *data, int len, int rwnd, int seq) {
 
     pkt->header.seq = seq;
     pkt->header.ack = 0;    /* Sender packet, ack not used */
-    pkt->header.rwnd = rwnd;
+    pkt->header.rwnd = ctrl->rwnd;
     pkt->header.data_len = len;
+    pkt->header.last_pkg = seq + len >= ctrl->bytes_total;
     memcpy(pkt->data, data, len);
 
     return pkt;
@@ -165,12 +168,11 @@ int timer_timeout(rdt_timer_t *timer) {
  * */
 void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
                                FILE* sendbuf, int seq) {
-    int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
+    int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_total - seq);
     char content[DATA_LEN];
     fseek(sendbuf, seq, SEEK_SET);
     fread(content, 1, bytes_to_send, sendbuf);
-    rdt_packet_t *pkt = rdt_sender_make_packet(content,
-                                               bytes_to_send, ctrl->rwnd, seq);
+    rdt_packet_t *pkt = rdt_sender_make_packet(content, ctrl, seq);
 
     /* Start timer if not currently timing previous packet */
     if (!ctrl->timer.on)
@@ -203,8 +205,7 @@ int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, FILE* sendbuf) {
     char content[DATA_LEN];
     fseek(sendbuf, ctrl->seq, SEEK_SET);
     fread(content, 1, bytes_to_send, sendbuf);
-    rdt_packet_t *pkt = rdt_sender_make_packet(
-        content, bytes_to_send, ctrl->rwnd, ctrl->seq);
+    rdt_packet_t *pkt = rdt_sender_make_packet(content, ctrl, ctrl->seq);
 
     if (!rdt_sender_send_packet(ctrl, pkt, bytes_to_send, 0)) {
         log(stderr, "Failed to transmit packet %d\n", ctrl->seq);
@@ -556,7 +557,6 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
             case CA: rdt_sender_state_ca(ctrl, sendbuf, recvbuf); break;
             case FR: rdt_sender_state_fr(ctrl, sendbuf, recvbuf); break;
         };
-        usleep(5000);
     }
 
     /* Close the socket */
