@@ -82,6 +82,8 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
         /* Buffer the packet */
         int pktnum = pkt->header.seq / DATA_LEN;
+        if (pktnum < head || pktnum >= tail + MAX_BUFFERED_PACKETS)
+            continue;                                   // drop it
         pktbuf[pktnum - head] = malloc(RDT_HEAD_LEN + pkt->header.data_len);
         memcpy(pktbuf[pktnum - head], pkt, RDT_HEAD_LEN + pkt->header.data_len);
         if (tail <= pktnum) tail = pktnum + 1;
