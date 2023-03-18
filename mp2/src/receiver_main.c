@@ -82,26 +82,26 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
         /* Buffer the packet */
         int pktnum = pkt->header.seq / DATA_LEN;
-        if (pktnum < head || pktnum >= tail + MAX_BUFFERED_PACKETS)
-            continue;                                   // drop it
-        pktbuf[pktnum - head] = malloc(RDT_HEAD_LEN + pkt->header.data_len);
-        memcpy(pktbuf[pktnum - head], pkt, RDT_HEAD_LEN + pkt->header.data_len);
-        if (tail <= pktnum) tail = pktnum + 1;
+        if (pktnum >= head && pktnum < head + MAX_BUFFERED_PACKETS) {
+            pktbuf[pktnum - head] = malloc(RDT_HEAD_LEN + pkt->header.data_len);
+            memcpy(pktbuf[pktnum - head], pkt, RDT_HEAD_LEN + pkt->header.data_len);
+            if (tail <= pktnum) tail = pktnum + 1;
 
-        /* Update "next" ptr */
-        while (pktbuf[next - head]) {
-            fwrite(pktbuf[next - head]->data, 1, \
-                pktbuf[next - head]->header.data_len, fptr);
-            free(pktbuf[next - head]);
-            pktbuf[next - head] = NULL;                 // store it, free it, and done with it
-            next++;
-        }
+            /* Update "next" ptr */
+            while (pktbuf[next - head]) {
+                fwrite(pktbuf[next - head]->data, 1, \
+                    pktbuf[next - head]->header.data_len, fptr);
+                free(pktbuf[next - head]);
+                pktbuf[next - head] = NULL;                 // store it, free it, and done with it
+                next++;
+            }
 
-        /* Update "head" ptr */
-        /* Good news: there's no need to copy the pointers around */
-        if (next == tail) {
-            memset(pktbuf, 0, tail - head);             // clear the buffer,
-            head = tail;                                // and start over
+            /* Update "head" ptr */
+            /* Good news: there's no need to copy the pointers around */
+            if (next == tail) {
+                memset(pktbuf, 0, tail - head);             // clear the buffer,
+                head = tail;                                // and start over
+            }
         }
 
         /* Send ACK */
