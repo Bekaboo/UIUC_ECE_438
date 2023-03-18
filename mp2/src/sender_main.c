@@ -46,7 +46,7 @@ rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
     rdt_ctrl->dupack_cnt = 0;
     rdt_ctrl->rwnd = DATA_LEN;
     rdt_ctrl->cwnd = DATA_LEN;
-    rdt_ctrl->ssthresh = 64 * 1024;
+    rdt_ctrl->ssthresh = 1024 * 1024;
     rdt_ctrl->bytes_total = bytesToTransfer;
     rdt_ctrl->timer.on = 0;
 
