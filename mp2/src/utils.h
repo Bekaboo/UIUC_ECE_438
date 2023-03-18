@@ -6,6 +6,10 @@
 #include <string.h>
 #include <time.h>
 
+#define pktbuf_idx(i) (pktbuf + PACKET_LEN * (i))
+#define DEBUG 0
+
+#if DEBUG
 #define log(fd, ...) ({                                      \
     char _time_str[32];                                      \
     struct tm *_timeinfo = localtime(&(time_t){time(NULL)}); \
@@ -22,6 +26,9 @@
     fprintf(fd, "%s.%06lu: ", _time_str, _timeval.tv_usec);  \
     fprintf(fd, __VA_ARGS__);                                \
 })
+#else
+#define log(fd, ...)
+#endif /* DEBUG */
 
 #define min(a,b) ({                                       \
     typeof(a) _a_temp_;                                   \
