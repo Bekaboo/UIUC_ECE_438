@@ -56,7 +56,10 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     if (fptr == NULL)
         diep("fopen");
 
-    rdt_packet_t* pktbuf[MAX_BUFFERED_PACKETS] = {NULL};
+    rdt_packet_t* pktbuf = (rdt_packet_t*) \
+        malloc(PACKET_LEN * MAX_BUFFERED_PACKETS);
+    memset(pktbuf, 0, PACKET_LEN * MAX_BUFFERED_PACKETS);
+    int present[MAX_BUFFERED_PACKETS] = {0};
     int head = 0, next = 0, tail = 0;
 
     /*
@@ -83,23 +86,22 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         /* Buffer the packet */
         int pktnum = pkt->header.seq / DATA_LEN;
         if (pktnum >= head && pktnum < head + MAX_BUFFERED_PACKETS) {
-            pktbuf[pktnum - head] = malloc(RDT_HEAD_LEN + pkt->header.data_len);
-            memcpy(pktbuf[pktnum - head], pkt, RDT_HEAD_LEN + pkt->header.data_len);
+            memcpy(pktbuf_idx(pktnum - head), pkt, RDT_HEAD_LEN + pkt->header.data_len);
+            present[pktnum - head] = 1;
             if (tail <= pktnum) tail = pktnum + 1;
 
             /* Update "next" ptr */
-            while (pktbuf[next - head]) {
-                fwrite(pktbuf[next - head]->data, 1, \
-                    pktbuf[next - head]->header.data_len, fptr);
-                free(pktbuf[next - head]);
-                pktbuf[next - head] = NULL;                 // store it, free it, and done with it
+            while (present[next - head]) {
+                fwrite(pktbuf_idx(next - head) + 1, 1, \
+                    pktbuf_idx(next - head)->header.data_len, fptr);
+                present[next - head] = 0;
                 next++;
             }
 
             /* Update "head" ptr */
             /* Good news: there's no need to copy the pointers around */
             if (next == tail) {
-                memset(pktbuf, 0, tail - head);             // clear the buffer,
+                memset(present, 0, sizeof (present));       // clear the markers
                 head = tail;                                // and start over
             }
         }
@@ -115,7 +117,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             diep("sendto");
 
         /* Break at EOF */
-        if (pkt->header.data_len < DATA_LEN && head == tail) break;
+        if (pkt->header.last_pkg && head == tail) break;
 
     }
 

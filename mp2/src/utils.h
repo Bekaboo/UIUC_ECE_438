@@ -7,6 +7,8 @@
 #include <time.h>
 
 #define pktbuf_idx(i) (pktbuf + PACKET_LEN * (i))
+
+#define pktbuf_idx(i) (pktbuf + PACKET_LEN * (i))
 #define DEBUG 0
 
 #if DEBUG
