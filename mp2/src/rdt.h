@@ -3,11 +3,8 @@
 
 #include <sys/time.h>
 
-#define MTU          1500
-#define IP_HEAD_LEN  20
-#define UDP_HEAD_LEN 8
 #define RDT_HEAD_LEN (sizeof(rdt_header_t))
-#define DATA_LEN     (MTU - IP_HEAD_LEN - UDP_HEAD_LEN - RDT_HEAD_LEN)
+#define DATA_LEN     15000
 #define PACKET_LEN   (RDT_HEAD_LEN + DATA_LEN)
 #define TIMEOUT      50000 /* 50 milliseconds */
 
