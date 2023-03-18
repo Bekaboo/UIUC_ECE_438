@@ -60,6 +60,7 @@ rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
  *        ctrl - pointer to the control structure
  *        seq - sequence number of the packet
  * Return: pointer to the packet if successful, exit otherwise
+ * Side effect: allocate memory for the packet
  * */
 rdt_packet_t *rdt_sender_make_packet(char *data, rdt_sender_ctrl_info_t *ctrl,
                                      int seq) {
@@ -88,6 +89,7 @@ rdt_packet_t *rdt_sender_make_packet(char *data, rdt_sender_ctrl_info_t *ctrl,
  *        len - length of the data, EXCLUDING RDT HEADER
  *        force - force sending the packet, bypassing congestion/flow control
  * Output: packet_sent - 1 if packet is sent; 0 otherwise
+ * Side effect: free the memory allocated for the packet
  * */
 int rdt_sender_send_packet(rdt_sender_ctrl_info_t *ctrl, rdt_packet_t *pkt,
                            int len, int force) {
@@ -102,6 +104,7 @@ int rdt_sender_send_packet(rdt_sender_ctrl_info_t *ctrl, rdt_packet_t *pkt,
             "                                rwnd:   %d\n"
             "                                cwnd:   %d\n",
             ctrl->seq, len, ctrl->expack, ctrl->rwnd, ctrl->cwnd);
+        free(pkt);
         return 0;
     }
 
