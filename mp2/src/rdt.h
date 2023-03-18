@@ -26,7 +26,6 @@ typedef struct rdt_timer_t {
     struct timeval start; /* Start time of timer          */
     int timeout;          /* Timeout value                */
     int on;               /* Whether the timer is running */
-    int seq;              /* Packet seq # being timing    */
 } rdt_timer_t;
 
 /*

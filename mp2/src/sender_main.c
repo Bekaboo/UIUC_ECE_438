@@ -122,13 +122,11 @@ int rdt_sender_send_packet(rdt_sender_ctrl_info_t *ctrl, rdt_packet_t *pkt,
  *
  * Input: timer - pointer to the timer
  *        timeout - timeout value
- *        seq - sequence number of the packet being timing
  * Return: None
  * */
-void timer_start(rdt_timer_t *timer, int timeout, int seq) {
+void timer_start(rdt_timer_t *timer, int timeout) {
     timer->on = 1;
     timer->timeout = timeout;
-    timer->seq = seq;
     gettimeofday(&timer->start, NULL);
 }
 
@@ -179,7 +177,7 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
 
     /* Start timer if not currently timing previous packet */
     if (!ctrl->timer.on)
-        timer_start(&ctrl->timer, TIMEOUT, seq);
+        timer_start(&ctrl->timer, TIMEOUT);
 
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send, 1)) {
         log(stderr, "Retransmit packet %d\n", seq);
@@ -202,7 +200,7 @@ int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, FILE* sendbuf) {
 
     /* Start timer if not currently timing previous packet */
     if (!ctrl->timer.on)
-        timer_start(&ctrl->timer, TIMEOUT, ctrl->seq);
+        timer_start(&ctrl->timer, TIMEOUT);
 
     int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
     char content[DATA_LEN];
@@ -248,7 +246,7 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, FILE *sendbuf) {
     ctrl->state = SS;
 
     rdt_sender_act_retransmit(ctrl, sendbuf,
-                              max(0, ctrl->timer.seq));
+                              max(0, ctrl->expack - DATA_LEN));
     return 1;
 }
 
