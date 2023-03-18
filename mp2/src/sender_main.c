@@ -234,6 +234,9 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, FILE *sendbuf) {
 
     log(stderr, "Timeout detected\n");
 
+    /* Stop the timer */
+    timer_stop(&ctrl->timer);
+
     /* Update control structure */
     ctrl->ssthresh = ctrl->cwnd / 2;
     ctrl->cwnd = DATA_LEN;
