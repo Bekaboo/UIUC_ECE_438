@@ -67,25 +67,29 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
                   ^       ^               ^
                 head    next            tail
 
-        [head, tail) - All buffered packets reside here
-        [head, next) - These are already written to file
+        [0,    head) - Packets written to file and removed from buffer
+        [head, next) - Contiguous packets *followed by a gap*, written to file
         [next, tail) - All fragmented gaps appear here
+        [tail, head + MAX_BUFFERED_PACKETS) - Empty, available slots
+        [head + MAX_BUFFERED_PACKETS, ...)  - Out of range
     */
 
     while (1) {
 
         /* Receive */
-        rdt_packet_t* pkt = (rdt_packet_t*) malloc(RDT_HEAD_LEN + DATA_LEN);
+        rdt_packet_t* pkt = (rdt_packet_t*) malloc(PACKET_LEN);
         int recv_len;
-        if ((recv_len = recvfrom(s, pkt, RDT_HEAD_LEN + DATA_LEN, 0, \
+        if ((recv_len = recvfrom(s, pkt, PACKET_LEN, 0, \
             (struct sockaddr *) &si_other, (socklen_t *) &slen)) == -1)
             diep("recvfrom");
-        log(stdout, "Received packet %d of length %d from %s:%d\n", \
-            pkt->header.seq, recv_len, inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+        log(stdout, "Received packet %d with data length %d from %s:%d\n", \
+            pkt->header.seq, pkt->header.data_len, \
+            inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
 
         /* Buffer the packet */
         int pktnum = pkt->header.seq / DATA_LEN;
-        if (pktnum >= head && pktnum < head + MAX_BUFFERED_PACKETS) {
+        if (pktnum >= next         // otherwise this must be a duplicate packet
+            && pktnum < head + MAX_BUFFERED_PACKETS) {      // can buffer
             memcpy(pktbuf_idx(pktnum - head), pkt, RDT_HEAD_LEN + pkt->header.data_len);
             present[pktnum - head] = 1;
             if (tail <= pktnum) tail = pktnum + 1;
@@ -99,7 +103,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             }
 
             /* Update "head" ptr */
-            /* Good news: there's no need to copy the pointers around */
+            /* Good news: there's no need to copy the packets around */
             if (next == tail) {
                 memset(present, 0, sizeof (present));       // clear the markers
                 head = tail;                                // and start over
