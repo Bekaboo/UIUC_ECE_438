@@ -22,8 +22,10 @@ typedef enum rdt_sender_state_t {IN, SS, CA, FR} rdt_sender_state_t;
 
 /* Timer */
 typedef struct rdt_timer_t {
-    struct timeval start; /* Start time of timer */
-    int timeout;          /* Timeout value       */
+    struct timeval start; /* Start time of timer          */
+    int timeout;          /* Timeout value                */
+    int on;               /* Whether the timer is running */
+    int seq;              /* Packet seq # being timing    */
 } rdt_timer_t;
 
 /*
@@ -39,7 +41,7 @@ typedef struct rdt_sender_ctrl_info_t {
     int rwnd;                 /* Self's receive window size (byte)        */
     int cwnd;                 /* Congestion window size (byte)            */
     int ssthresh;             /* Slow start threshold (byte)              */
-    int bytes_total;        /* Number of bytes to send                  */
+    int bytes_total;          /* Number of bytes to send                  */
 } rdt_sender_ctrl_info_t;
 
 /*
