@@ -300,9 +300,8 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                 /* Update control structure */
                 ctrl->cwnd += DATA_LEN;
                 ctrl->dupack_cnt = 0;
-                ctrl->expack =
-                    recvpkt->header.ack +
-                    min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
+                ctrl->expack = recvpkt->header.ack + min((int)DATA_LEN,
+                        ctrl->bytes_total - recvpkt->header.ack);
 
                 /* Stop the timer */
                 timer_stop(&ctrl->timer);
@@ -314,9 +313,8 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
             case CA:
                 ctrl->cwnd += DATA_LEN * DATA_LEN / ctrl->cwnd;
                 ctrl->dupack_cnt = 0;
-                ctrl->expack =
-                    recvpkt->header.ack +
-                    min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
+                ctrl->expack = recvpkt->header.ack + min((int)DATA_LEN,
+                        ctrl->bytes_total - recvpkt->header.ack);
 
                 /* Stop the timer */
                 timer_stop(&ctrl->timer);
@@ -329,9 +327,8 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                 ctrl->cwnd = ctrl->ssthresh;
                 ctrl->dupack_cnt = 0;
                 ctrl->state = CA;
-                ctrl->expack =
-                    recvpkt->header.ack +
-                    min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
+                ctrl->expack = recvpkt->header.ack + min((int)DATA_LEN,
+                        ctrl->bytes_total - recvpkt->header.ack);
 
                 /* Stop the timer */
                 timer_stop(&ctrl->timer);
