@@ -557,7 +557,11 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     }
 
     /* Start transmission */
-    while (ctrl->expack < ctrl->bytes_total) {
+    /* The transmission stops only when both the expected ACK and the sequence
+     * number of the next packet is equal or greater to the total number of
+     * bytes to send */
+    while (ctrl->expack < ctrl->bytes_total ||
+           ctrl->seq < ctrl->bytes_total) {
         switch (ctrl->state) {
             case IN: rdt_sender_state_in(ctrl, sendbuf); break;
             case SS: rdt_sender_state_ss(ctrl, sendbuf, recvbuf); break;
