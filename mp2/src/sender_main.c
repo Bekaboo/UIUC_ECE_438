@@ -239,14 +239,16 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, FILE *sendbuf) {
     /* Stop the timer */
     timer_stop(&ctrl->timer);
 
+    int retransmit_seq = max(0, ctrl->expack);
+
     /* Update control structure */
     ctrl->ssthresh = ctrl->cwnd / 2;
     ctrl->cwnd = DATA_LEN;
-    ctrl->dupack_cnt = 0;
+    if (ctrl->dupack == retransmit_seq)
+        ctrl->dupack_cnt = 0;
     ctrl->state = SS;
 
-    rdt_sender_act_retransmit(ctrl, sendbuf,
-                              max(0, ctrl->expack - DATA_LEN));
+    rdt_sender_act_retransmit(ctrl, sendbuf, retransmit_seq);
     return 1;
 }
 
