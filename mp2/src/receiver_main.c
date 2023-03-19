@@ -12,7 +12,7 @@
 
 #include "rdt.h"
 
-#define RWND 1456 * 16
+#define RWND DATA_LEN * 2
 
 struct sockaddr_in si_me, si_other;
 int s, slen;
