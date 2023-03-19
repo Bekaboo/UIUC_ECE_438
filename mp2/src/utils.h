@@ -6,7 +6,7 @@
 #include <string.h>
 #include <time.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
 #if DEBUG
 #define log(fd, ...) ({                                      \
