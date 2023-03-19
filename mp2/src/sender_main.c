@@ -544,14 +544,15 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     fseek(sendbuf, 0, SEEK_END);
     int bytesRead = ftell(sendbuf);
     fseek(sendbuf, 0, SEEK_SET);
-    if (bytesToTransfer != bytesRead) {
+    if (bytesToTransfer > bytesRead) {
         log(stderr, "Warning: "
             "bytesToTransfer set to %llu but only %d bytes read\n",
             bytesToTransfer, bytesRead);
     }
 
     /* Initialize control structure for new RDT FSM */
-    rdt_sender_ctrl_info_t *ctrl = rdt_sender_ctrl_init(bytesRead);
+    rdt_sender_ctrl_info_t *ctrl =
+        rdt_sender_ctrl_init(min(bytesToTransfer, bytesRead));
     if (ctrl == NULL) {
         log(stderr, "Failed to initialize control structure for RDT\n");
         exit(1);
