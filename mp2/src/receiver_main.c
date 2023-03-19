@@ -56,7 +56,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     if (fptr == NULL)
         diep("fopen");
 
-    int recv_len, next_expected = 0;
+    int recv_len, next_expected = 0, can_terminate = 0;
     rdt_packet_t* pkt = (rdt_packet_t*) malloc(PACKET_LEN);
 
     while (1) {
@@ -72,6 +72,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         if (pkt->header.seq == next_expected) {
             fwrite(pkt->data, 1, pkt->header.data_len, fptr);
             next_expected += pkt->header.data_len;
+            can_terminate = pkt->header.last_pkg;
         }
 
         /* Send ACK */
@@ -83,7 +84,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             diep("sendto");
 
         /* Break at EOF */
-        if (pkt->header.last_pkg) break;
+        if (can_terminate) break;
 
     }
 
