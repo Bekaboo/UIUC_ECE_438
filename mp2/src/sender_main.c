@@ -343,6 +343,10 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
             default:
                 break;
         }
+
+        if (recvpkt->header.ack >= ctrl->bytes_total) {
+            ctrl->state = DN;
+        }
     }
 
     return 1;
@@ -557,19 +561,17 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     }
 
     /* Start transmission */
-    /* The transmission stops only when both the expected ACK and the sequence
-     * number of the next packet is equal or greater to the total number of
-     * bytes to send */
-    while (ctrl->expack < ctrl->bytes_total ||
-           ctrl->seq < ctrl->bytes_total) {
+    while (1) {
         switch (ctrl->state) {
             case IN: rdt_sender_state_in(ctrl, sendbuf); break;
             case SS: rdt_sender_state_ss(ctrl, sendbuf, recvbuf); break;
             case CA: rdt_sender_state_ca(ctrl, sendbuf, recvbuf); break;
             case FR: rdt_sender_state_fr(ctrl, sendbuf, recvbuf); break;
+            case DN: goto rdt_sender_transmission_done; break;
         };
     }
 
+rdt_sender_transmission_done:
     /* Close the socket */
     log(stderr, "Closing the socket\n");
     close(s);

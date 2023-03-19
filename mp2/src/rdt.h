@@ -17,8 +17,9 @@
  * SS: slow start
  * CA: congestion avoidance
  * FR: fast recovery
+ * DN: done
  * */
-typedef enum rdt_sender_state_t {IN, SS, CA, FR} rdt_sender_state_t;
+typedef enum rdt_sender_state_t {IN, SS, CA, FR, DN} rdt_sender_state_t;
 
 /* Timer */
 typedef struct rdt_timer_t {
