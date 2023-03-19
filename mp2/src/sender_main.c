@@ -46,7 +46,7 @@ rdt_sender_ctrl_info_t *rdt_sender_ctrl_init(int bytesToTransfer) {
     rdt_ctrl->dupack_cnt = 0;
     rdt_ctrl->rwnd = DATA_LEN;
     rdt_ctrl->cwnd = DATA_LEN;
-    rdt_ctrl->ssthresh = 64 * 1024;
+    rdt_ctrl->ssthresh = 1024 * 1024;
     rdt_ctrl->bytes_total = bytesToTransfer;
     rdt_ctrl->timer.on = 0;
 
@@ -205,6 +205,8 @@ int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, FILE* sendbuf) {
     }
 
     log(stdout, "Transmit packet %d\n", ctrl->seq);
+    log(stdout, "[seq=%d expack=%d dupack=%d dupack_cnt=%d rwnd=%d cwnd=%d ssthresh=%d]\n",
+        ctrl->seq, ctrl->expack, ctrl->dupack, ctrl->dupack_cnt, ctrl->rwnd, ctrl->cwnd, ctrl->ssthresh);
 
     /* Update control structure */
     ctrl->seq += bytes_to_send;
