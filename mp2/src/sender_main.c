@@ -96,14 +96,6 @@ int rdt_sender_send_packet(rdt_sender_ctrl_info_t *ctrl, rdt_packet_t *pkt,
     /* Congestion control and flow control */
     if (!force &&
             (ctrl->seq + len - ctrl->expack > min(ctrl->rwnd, ctrl->cwnd))) {
-        log(stderr,
-            "Not sending packet due to congestion/flow ctrl:\n"
-            "                                seq:    %d\n"
-            "                                len:    %d\n"
-            "                                expack: %d\n"
-            "                                rwnd:   %d\n"
-            "                                cwnd:   %d\n",
-            ctrl->seq, len, ctrl->expack, ctrl->rwnd, ctrl->cwnd);
         free(pkt);
         return 0;
     }
@@ -209,7 +201,6 @@ int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, FILE* sendbuf) {
     rdt_packet_t *pkt = rdt_sender_make_packet(content, ctrl, ctrl->seq);
 
     if (!rdt_sender_send_packet(ctrl, pkt, bytes_to_send, 0)) {
-        log(stderr, "Failed to transmit packet %d\n", ctrl->seq);
         return 0;
     }
 
@@ -279,21 +270,31 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
     rdt_packet_t *recvpkt = (rdt_packet_t *) recvbuf;
     ctrl->rwnd = recvpkt->header.rwnd;
     if (recvpkt->header.ack == ctrl->dupack) {          // Duplicate ACK
-        log(stderr, "Received duplicate ACK %d\n", recvpkt->header.ack);
         if (ctrl->state == FR) {
             ctrl->cwnd += DATA_LEN;
+            log(stderr, "Received duplicate ACK %d "
+                "in state FR, cwnd updated to %d\n",
+                recvpkt->header.ack, ctrl->cwnd);
         } else {
             ctrl->dupack_cnt++;
+            log(stderr, "Received duplicate ACK %d, "
+                "dupack_cnt updated to %d\n",
+                recvpkt->header.ack, ctrl->dupack_cnt);
         }
     } else if (recvpkt->header.ack < ctrl->expack) {    // Old ACK
                                                         // (1st dup ACK)
-        log(stderr, "Received duplicate ACK %d\n", recvpkt->header.ack);
         if (ctrl->state == FR) {
             ctrl->cwnd += DATA_LEN;
+            log(stderr, "Received duplicate ACK %d "
+                "in state FR, cwnd updated to %d\n",
+                recvpkt->header.ack, ctrl->cwnd);
             rdt_sender_act_transmit(ctrl, sendbuf);
         } else {
             ctrl->dupack = recvpkt->header.ack;
             ctrl->dupack_cnt = 1;
+            log(stderr, "Received duplicate ACK %d, "
+                "dupack_cnt updated to %d\n",
+                recvpkt->header.ack, ctrl->dupack_cnt);
         }
     } else {                                            // New ACK
         log(stdout, "Received new ACK %d\n", recvpkt->header.ack);

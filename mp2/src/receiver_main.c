@@ -82,9 +82,8 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         if ((recv_len = recvfrom(s, pkt, PACKET_LEN, 0, \
             (struct sockaddr *) &si_other, (socklen_t *) &slen)) == -1)
             diep("recvfrom");
-        log(stdout, "Received packet %d with data length %d from %s:%d\n", \
-            pkt->header.seq, pkt->header.data_len, \
-            inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+        log(stdout, "Received packet %d with data length %d\n", \
+            pkt->header.seq, pkt->header.data_len);
 
         /* Buffer the packet */
         int pktnum = pkt->header.seq / DATA_LEN;
