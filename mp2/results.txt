@@ -2,9 +2,8 @@ test results:
 
   Test 1: sanity check: transfer single byte succeeded!
  Test 2: transfer 50K succeeded!
--10:  Test 3: utilize empty link failed: your receiver didn't terminate within 45s. your receiver wrote 52383744 of 65000000 bytes to disk.
-
--10:  Test 6: quick convergence failed: failed to send 20MB in 20s (receiver wrote 22781952 bytes)
+ Test 3: utilize empty link succeeded!
+-10:  Test 6: quick convergence failed: failed to send 20MB in 20s (receiver wrote 65000000 bytes)
 
 -10:  Test 7: TCP friendliness failed: your process died or ended early. (note: it's being given 999000999000 as the numBytes argument)
 
@@ -12,8 +11,8 @@ test results:
  (current version late: -0%)
 
 ====================
-version:8
-score: 60/100
-all-time best score (your current grade): 60/100
+version:9
+score: 70/100
+all-time best score (your current grade): 70/100
 
 
