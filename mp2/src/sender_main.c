@@ -117,6 +117,7 @@ int rdt_sender_send_packet(rdt_sender_ctrl_info_t *ctrl, rdt_packet_t *pkt,
  * Return: None
  * */
 void timer_start(rdt_timer_t *timer, int timeout) {
+    log(stdout, "Timer started with timeout %d\n", timeout);
     timer->on = 1;
     timer->timeout = timeout;
     gettimeofday(&timer->start, NULL);
@@ -130,6 +131,7 @@ void timer_start(rdt_timer_t *timer, int timeout) {
  * Return: None
  * */
 void timer_stop(rdt_timer_t *timer) {
+    log(stdout, "Timer stopped\n");
     timer->on = 0;
 }
 
@@ -167,15 +169,16 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
     fread(content, 1, bytes_to_send, sendbuf);
     rdt_packet_t *pkt = rdt_sender_make_packet(content, ctrl, seq);
 
-    /* Start timer if not currently timing previous packet */
-    if (!ctrl->timer.on)
-        timer_start(&ctrl->timer, TIMEOUT);
-
     if (rdt_sender_send_packet(ctrl, pkt, bytes_to_send, 1)) {
         log(stderr, "Retransmit packet %d\n", seq);
     } else {
         log(stderr, "Failed to retransmit packet %d\n", seq);
     }
+
+    /* Start timer if not currently timing previous packet */
+    if (!ctrl->timer.on)
+        timer_start(&ctrl->timer, TIMEOUT);
+
 }
 
 /*
@@ -186,13 +189,13 @@ void rdt_sender_act_retransmit(rdt_sender_ctrl_info_t *ctrl,
  * Return: 1 if packet is sent, 0 otherwise
  * */
 int rdt_sender_act_transmit(rdt_sender_ctrl_info_t *ctrl, FILE* sendbuf) {
-    if (ctrl->bytes_total - ctrl->seq <= 0) {
-        return 0;
-    }
-
     /* Start timer if not currently timing previous packet */
     if (!ctrl->timer.on)
         timer_start(&ctrl->timer, TIMEOUT);
+
+    if (ctrl->bytes_total - ctrl->seq <= 0) {
+        return 0;
+    }
 
     int bytes_to_send = min((int)DATA_LEN, ctrl->bytes_total - ctrl->seq);
     char content[DATA_LEN];
@@ -229,8 +232,8 @@ int rdt_sender_event_timeout(rdt_sender_ctrl_info_t *ctrl, FILE *sendbuf) {
 
     log(stderr, "Timeout detected\n");
 
-    /* Stop the timer */
-    timer_stop(&ctrl->timer);
+    /* Restart the timer with larger timeout */
+    timer_start(&ctrl->timer, ctrl->timer.timeout + TIMEOUT);
 
     int retransmit_seq = max(0, ctrl->expack);
 
@@ -335,8 +338,8 @@ int rdt_sender_event_handleack(rdt_sender_ctrl_info_t *ctrl,
                 ctrl->expack = recvpkt->header.ack + min((int)DATA_LEN,
                         ctrl->bytes_total - recvpkt->header.ack);
 
-                /* Stop the timer */
-                timer_stop(&ctrl->timer);
+                /* Restart the timer */
+                timer_start(&ctrl->timer, TIMEOUT);
                 break;
 
             default:
@@ -358,6 +361,9 @@ int rdt_sender_event_dupackcount(rdt_sender_ctrl_info_t *ctrl, FILE *sendbuf) {
     if (ctrl->dupack_cnt < 3) {
         return 0;
     }
+
+    log(stderr, "Duplicate ACK %d has count %d\n",
+        ctrl->dupack, ctrl->dupack_cnt);
 
     switch (ctrl->state) {
         case SS:
@@ -552,7 +558,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     }
 
     /* Start transmission */
-    while (ctrl->expack < ctrl->bytes_total) {
+    while (ctrl->expack - min(ctrl->expack, DATA_LEN) < ctrl->bytes_total) {
         switch (ctrl->state) {
             case IN: rdt_sender_state_in(ctrl, sendbuf); break;
             case SS: rdt_sender_state_ss(ctrl, sendbuf, recvbuf); break;
