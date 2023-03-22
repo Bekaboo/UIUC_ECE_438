@@ -1,0 +1,16 @@
+test results:
+
+  Test 1: sanity check: transfer single byte succeeded!
+ Test 2: transfer 50K succeeded!
+ Test 3: utilize empty link succeeded!
+ Test 6: quick convergence succeeded!
+ Test 7: TCP friendliness succeeded! (TCP got 39.6 Mbps)
+ Test 8: TCP friendliness with 1% loss succeeded! (TCP got 19.8 Mbps)
+ (current version late: -0%)
+
+====================
+version:12
+score: 100/100
+all-time best score (your current grade): 100/100
+
+
