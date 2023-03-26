@@ -5,7 +5,7 @@ test results:
  Test 3: utilize empty link succeeded!
  Test 6: quick convergence succeeded!
  Test 7: TCP friendliness succeeded! (TCP got 39.4 Mbps)
- Test 8: TCP friendliness with 1% loss succeeded! (TCP got 35.1 Mbps)
+ Test 8: TCP friendliness with 1% loss succeeded! (TCP got 20.8 Mbps)
  (current version late: -0%)
 
 ====================
