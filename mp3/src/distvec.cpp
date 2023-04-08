@@ -56,8 +56,10 @@ public:
 
 		// memoization init
 		dist[root][root] = 0;
+		int mst[MAX_NNODE];
 		bool visited[MAX_NNODE];
 		for (int i = 0; i < MAX_NNODE; i++) {
+			mst[i] = DISCONNECTED;
 			visited[i] = false;
 		}
 
@@ -79,8 +81,19 @@ public:
 					&& adj[min_idx][j] != DISCONNECTED
 					&& dist[root][min_idx] + adj[min_idx][j] < dist[root][j]) {
 					dist[root][j] = dist[root][min_idx] + adj[min_idx][j];
-					next[root][j] = min_idx;
+					mst[j] = min_idx;
 				}
+			}
+		}
+
+		// backtrack MST to construct NEXT
+		for (int i = 0; i < MAX_NNODE; i++) {
+			if (nodes[i] && i != root) {
+				int j = i;
+				while (mst[j] != root) {
+					j = mst[j];
+				}
+				next[root][i] = j;
 			}
 		}
 	}
