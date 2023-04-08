@@ -118,6 +118,16 @@ public:
 			}
 		}
 	}
+
+	void write_msg(FILE* fp, int src, int dest, char* content) {
+		fprintf(fp, "from %d to %d cost %d hops ", src, dest, dist[src][dest]);
+		int pos = src;
+		while (pos != dest) {
+			fprintf(fp, "%d ", pos);
+			pos = next[pos][dest];
+		}
+		fprintf(fp, "message %s", content);
+	}
 };
 
 
@@ -171,10 +181,8 @@ int main(int argc, char** argv) {
 	fclose(fpm);
 
 	for (int i = 0; i < msgs.num; i++) {
-		printf("%d %d %s",
-			msgs.entries[i].src,
-			msgs.entries[i].dest,
-			msgs.entries[i].data);
+		graph.write_msg(fpo, msgs.entries[i].src,
+			msgs.entries[i].dest, msgs.entries[i].data);
 	}
 
 	// fpc = fopen(argv[3], "r");
