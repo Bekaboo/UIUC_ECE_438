@@ -144,6 +144,12 @@ typedef struct message_t {
 } message_t;
 
 
+typedef struct messages_t {
+	int num;
+	message_t entries[MAX_NMSG];
+} messages_t;
+
+
 int main(int argc, char** argv) {
 
 	if (argc != 4) {
@@ -152,6 +158,7 @@ int main(int argc, char** argv) {
 	}
 
 	Graph graph;
+	messages_t msgs;
 	FILE *fpt, *fpm, *fpc, *fpo;
 	char buf[MAX_LMSG], hdata[MAX_LMSG];
 
@@ -166,23 +173,21 @@ int main(int argc, char** argv) {
 	graph.dijkstra_all();
 	graph.print();
 
-	int nm = 0;
-	message_t message_ts[MAX_NMSG];
 	fpm = fopen(argv[2], "r");
 	while (1) {
 		if (!fgets(buf, MAX_LMSG, fpm)) break;
-		sscanf(buf, "%d %d %s", &message_ts[nm].src,
-			&message_ts[nm].dest, hdata);
+		sscanf(buf, "%d %d %s", &msgs.entries[msgs.num].src,
+			&msgs.entries[msgs.num].dest, hdata);
 		char* hptr = strstr(buf, hdata);
-		strcpy(message_ts[nm].data, hptr);
-		nm++;
+		strcpy(msgs.entries[msgs.num].data, hptr);
+		msgs.num++;
 	}
 
-	for (int i = 0; i < nm; i++) {
+	for (int i = 0; i < msgs.num; i++) {
 		printf("%d %d %s",
-			message_ts[i].src,
-			message_ts[i].dest,
-			message_ts[i].data);
+			msgs.entries[i].src,
+			msgs.entries[i].dest,
+			msgs.entries[i].data);
 	}
 
 	// fpc = fopen(argv[3], "r");
