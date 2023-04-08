@@ -151,7 +151,7 @@ public:
 		adj[dest][src] = cost;
 	}
 
-	
+
 	void converge_and_report(FILE* fp, messages_t msgs) {
 		dijkstra_all();
 		write_rt(fp);
@@ -172,20 +172,26 @@ int main(int argc, char** argv) {
 
 	Graph graph;
 	messages_t msgs;
-	FILE *fpt, *fpm, *fpc, *fpo;
-	fpo = fopen("output.txt", "w");
 	int src, dest, cost;
 	char buf[MAX_LMSG], hdata[MAX_LMSG];
 
+	FILE *fpt, *fpm, *fpc, *fpo;
+	fpo = fopen("output.txt", "w");
 	fpt = fopen(argv[1], "r");
+	fpm = fopen(argv[2], "r");
+	fpc = fopen(argv[3], "r");
+	if (!fpt || !fpm || !fpc || !fpo) {
+		printf("Error: cannot open file\n");
+		return -1;
+	}
+
+
 	while (1) {
 		if (!fgets(buf, MAX_LMSG, fpt)) break;
 		sscanf(buf, "%d %d %d", &src, &dest, &cost);
 		graph.add_edge(src, dest, cost);
 	}
-	fclose(fpt);
 
-	fpm = fopen(argv[2], "r");
 	while (1) {
 		if (!fgets(buf, MAX_LMSG, fpm)) break;
 		sscanf(buf, "%d %d %s", &msgs.entries[msgs.num].src,
@@ -194,11 +200,9 @@ int main(int argc, char** argv) {
 		strcpy(msgs.entries[msgs.num].data, hptr);
 		msgs.num++;
 	}
-	fclose(fpm);
 
 	graph.converge_and_report(fpo, msgs);
 
-	fpc = fopen(argv[3], "r");
 	while (1) {
 		if (!fgets(buf, MAX_LMSG, fpc)) break;
 		sscanf(buf, "%d %d %d", &src, &dest, &cost);
@@ -206,8 +210,11 @@ int main(int argc, char** argv) {
 		graph.reset();
 		graph.converge_and_report(fpo, msgs);
 	}
-	fclose(fpc);
 
+
+	fclose(fpt);
+	fclose(fpm);
+	fclose(fpc);
 	fclose(fpo);
 	return 0;
 }
