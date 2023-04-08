@@ -115,12 +115,21 @@ public:
 		for (int i = 0; i < MAX_NNODE; i++) {
 			nodes[i] = false;
 			for (int j = 0; j < MAX_NNODE; j++) {
+				if (i == j) adj[i][j] = 0;
+				else adj[i][j] = DISCONNECTED;
+			}
+		}
+		reset();
+	}
+
+
+	void reset() {
+		for (int i = 0; i < MAX_NNODE; i++) {
+			for (int j = 0; j < MAX_NNODE; j++) {
 				if (i == j) {
-					adj[i][j] = 0;
 					next[i][j] = i;
 					dist[i][j] = 0;
 				} else {
-					adj[i][j] = DISCONNECTED;
 					next[i][j] = DISCONNECTED;
 					dist[i][j] = INF;
 				}
@@ -165,12 +174,12 @@ int main(int argc, char** argv) {
 	messages_t msgs;
 	FILE *fpt, *fpm, *fpc, *fpo;
 	fpo = fopen("output.txt", "w");
+	int src, dest, cost;
 	char buf[MAX_LMSG], hdata[MAX_LMSG];
 
 	fpt = fopen(argv[1], "r");
 	while (1) {
 		if (!fgets(buf, MAX_LMSG, fpt)) break;
-		int src, dest, cost;
 		sscanf(buf, "%d %d %d", &src, &dest, &cost);
 		graph.add_edge(src, dest, cost);
 	}
@@ -189,8 +198,15 @@ int main(int argc, char** argv) {
 
 	graph.converge_and_report(fpo, msgs);
 
-	// fpc = fopen(argv[3], "r");
-
+	fpc = fopen(argv[3], "r");
+	while (1) {
+		if (!fgets(buf, MAX_LMSG, fpc)) break;
+		sscanf(buf, "%d %d %d", &src, &dest, &cost);
+		graph.add_edge(src, dest, cost);
+		graph.reset();
+		graph.converge_and_report(fpo, msgs);
+	}
+	fclose(fpc);
 
 	fclose(fpo);
 	return 0;
