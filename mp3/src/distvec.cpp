@@ -107,31 +107,15 @@ public:
 	}
 
 
-	void print() {
-		printf("nnode = %d\n", nnode);
-		printf("[adj]\n");
-		for (int i = 0; i < 16; i++) {
-			for (int j = 0; j < 16; j++) {
-				if (adj[i][j] == DISCONNECTED)  printf("X ");
-				else printf("%d ", adj[i][j]);
+	void write_rt(FILE* fp) {
+		for (int i = 0; i < MAX_NNODE; i++) {
+			if (nodes[i]) {
+				for (int j = 0; j < MAX_NNODE; j++) {
+					if (nodes[j]) {
+						fprintf(fp, "%d %d %d\n", j, next[i][j], dist[i][j]);
+					}
+				}
 			}
-			printf("\n");
-		}
-		printf("[next]\n");
-		for (int i = 0; i < 16; i++) {
-			for (int j = 0; j < 16; j++) {
-				if (next[i][j] == DISCONNECTED)  printf("X ");
-				else printf("%d ", next[i][j]);
-			}
-			printf("\n");
-		}
-		printf("[dist]\n");
-		for (int i = 0; i < 16; i++) {
-			for (int j = 0; j < 16; j++) {
-				if (dist[i][j] == INF)  printf("X ");
-				else printf("%d ", dist[i][j]);
-			}
-			printf("\n");
 		}
 	}
 };
@@ -160,6 +144,7 @@ int main(int argc, char** argv) {
 	Graph graph;
 	messages_t msgs;
 	FILE *fpt, *fpm, *fpc, *fpo;
+	fpo = fopen("output.txt", "w");
 	char buf[MAX_LMSG], hdata[MAX_LMSG];
 
 	fpt = fopen(argv[1], "r");
@@ -169,9 +154,10 @@ int main(int argc, char** argv) {
 		sscanf(buf, "%d %d %d", &src, &dest, &cost);
 		graph.add_edge(src, dest, cost);
 	}
+	fclose(fpt);
 
 	graph.dijkstra_all();
-	graph.print();
+	graph.write_rt(fpo);
 
 	fpm = fopen(argv[2], "r");
 	while (1) {
@@ -182,6 +168,7 @@ int main(int argc, char** argv) {
 		strcpy(msgs.entries[msgs.num].data, hptr);
 		msgs.num++;
 	}
+	fclose(fpm);
 
 	for (int i = 0; i < msgs.num; i++) {
 		printf("%d %d %s",
@@ -193,9 +180,7 @@ int main(int argc, char** argv) {
 	// fpc = fopen(argv[3], "r");
 
 
-	// fpo = fopen("output.txt", "w");
-	// fclose(fpo);
-
+	fclose(fpo);
 	return 0;
 }
 
