@@ -9,6 +9,19 @@
 #define INF 0x7FFFFFFF
 
 
+typedef struct message_t {
+	int src;
+	int dest;
+	char data[MAX_LMSG];
+} message_t;
+
+
+typedef struct messages_t {
+	int num;
+	message_t entries[MAX_NMSG];
+} messages_t;
+
+
 class Graph {
 
 
@@ -67,6 +80,36 @@ private:
 	}
 
 
+	void dijkstra_all() {
+		for (int i = 0; i < MAX_NNODE; i++) {
+			if (nodes[i]) dijkstra(i);
+		}
+	}
+
+
+	void write_rt(FILE* fp) {
+		for (int i = 0; i < MAX_NNODE; i++) {
+			if (nodes[i]) {
+				for (int j = 0; j < MAX_NNODE; j++) {
+					if (nodes[j]) {
+						fprintf(fp, "%d %d %d\n", j, next[i][j], dist[i][j]);
+					}
+				}
+			}
+		}
+	}
+
+	void write_msg(FILE* fp, int src, int dest, char* content) {
+		fprintf(fp, "from %d to %d cost %d hops ", src, dest, dist[src][dest]);
+		int pos = src;
+		while (pos != dest) {
+			fprintf(fp, "%d ", pos);
+			pos = next[pos][dest];
+		}
+		fprintf(fp, "message %s", content);
+	}
+
+
 public:
 	Graph() {
 		for (int i = 0; i < MAX_NNODE; i++) {
@@ -99,49 +142,16 @@ public:
 		adj[dest][src] = cost;
 	}
 
-
-	void dijkstra_all() {
-		for (int i = 0; i < MAX_NNODE; i++) {
-			if (nodes[i]) dijkstra(i);
+	
+	void converge_and_report(FILE* fp, messages_t msgs) {
+		dijkstra_all();
+		write_rt(fp);
+		for (int i = 0; i < msgs.num; i++) {
+			write_msg(fp, msgs.entries[i].src,
+				msgs.entries[i].dest, msgs.entries[i].data);
 		}
-	}
-
-
-	void write_rt(FILE* fp) {
-		for (int i = 0; i < MAX_NNODE; i++) {
-			if (nodes[i]) {
-				for (int j = 0; j < MAX_NNODE; j++) {
-					if (nodes[j]) {
-						fprintf(fp, "%d %d %d\n", j, next[i][j], dist[i][j]);
-					}
-				}
-			}
-		}
-	}
-
-	void write_msg(FILE* fp, int src, int dest, char* content) {
-		fprintf(fp, "from %d to %d cost %d hops ", src, dest, dist[src][dest]);
-		int pos = src;
-		while (pos != dest) {
-			fprintf(fp, "%d ", pos);
-			pos = next[pos][dest];
-		}
-		fprintf(fp, "message %s", content);
 	}
 };
-
-
-typedef struct message_t {
-	int src;
-	int dest;
-	char data[MAX_LMSG];
-} message_t;
-
-
-typedef struct messages_t {
-	int num;
-	message_t entries[MAX_NMSG];
-} messages_t;
 
 
 int main(int argc, char** argv) {
@@ -166,9 +176,6 @@ int main(int argc, char** argv) {
 	}
 	fclose(fpt);
 
-	graph.dijkstra_all();
-	graph.write_rt(fpo);
-
 	fpm = fopen(argv[2], "r");
 	while (1) {
 		if (!fgets(buf, MAX_LMSG, fpm)) break;
@@ -180,10 +187,7 @@ int main(int argc, char** argv) {
 	}
 	fclose(fpm);
 
-	for (int i = 0; i < msgs.num; i++) {
-		graph.write_msg(fpo, msgs.entries[i].src,
-			msgs.entries[i].dest, msgs.entries[i].data);
-	}
+	graph.converge_and_report(fpo, msgs);
 
 	// fpc = fopen(argv[3], "r");
 
