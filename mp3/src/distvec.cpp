@@ -153,7 +153,7 @@ typedef struct messages_t {
 int main(int argc, char** argv) {
 
 	if (argc != 4) {
-		printf("Usage: ./distvec topofile message_tfile changesfile\n");
+		printf("Usage: ./distvec topofile messagefile changesfile\n");
 		return -1;
 	}
 
