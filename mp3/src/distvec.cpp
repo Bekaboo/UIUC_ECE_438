@@ -12,44 +12,12 @@
 class Graph {
 
 
-public:
+private:
 	int nnode;
 	bool nodes[MAX_NNODE];
 	int adj[MAX_NNODE][MAX_NNODE];
 	int next[MAX_NNODE][MAX_NNODE];
 	int dist[MAX_NNODE][MAX_NNODE];
-
-
-	Graph() {
-		for (int i = 0; i < MAX_NNODE; i++) {
-			nodes[i] = false;
-			for (int j = 0; j < MAX_NNODE; j++) {
-				if (i == j) {
-					adj[i][j] = 0;
-					next[i][j] = i;
-					dist[i][j] = 0;
-				} else {
-					adj[i][j] = DISCONNECTED;
-					next[i][j] = DISCONNECTED;
-					dist[i][j] = INF;
-				}
-			}
-		}
-	}
-
-
-	void add_edge(int src, int dest, int cost) {
-		if (!nodes[src]) {
-			nodes[src] = true;
-			nnode++;
-		}
-		if (!nodes[dest]) {
-			nodes[dest] = true;
-			nnode++;
-		}
-		adj[src][dest] = cost;
-		adj[dest][src] = cost;
-	}
 
 
 	void dijkstra(int root) {
@@ -95,6 +63,46 @@ public:
 				}
 				next[root][i] = j;
 			}
+		}
+	}
+
+
+public:
+	Graph() {
+		for (int i = 0; i < MAX_NNODE; i++) {
+			nodes[i] = false;
+			for (int j = 0; j < MAX_NNODE; j++) {
+				if (i == j) {
+					adj[i][j] = 0;
+					next[i][j] = i;
+					dist[i][j] = 0;
+				} else {
+					adj[i][j] = DISCONNECTED;
+					next[i][j] = DISCONNECTED;
+					dist[i][j] = INF;
+				}
+			}
+		}
+	}
+
+
+	void add_edge(int src, int dest, int cost) {
+		if (!nodes[src]) {
+			nodes[src] = true;
+			nnode++;
+		}
+		if (!nodes[dest]) {
+			nodes[dest] = true;
+			nnode++;
+		}
+		adj[src][dest] = cost;
+		adj[dest][src] = cost;
+	}
+
+
+	void dijkstra_all() {
+		for (int i = 0; i < MAX_NNODE; i++) {
+			if (nodes[i]) dijkstra(i);
 		}
 	}
 
@@ -155,7 +163,7 @@ int main(int argc, char** argv) {
 		graph.add_edge(src, dest, cost);
 	}
 
-	graph.dijkstra(1);
+	graph.dijkstra_all();
 	graph.print();
 
 	int nm = 0;
