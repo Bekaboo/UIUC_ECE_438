@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "routing.hpp"
 
 
@@ -86,49 +83,28 @@ int main(int argc, char** argv) {
 
 	GraphDV graph;
 	messages_t msgs;
-	int src, dest, cost;
-	char buf[MAX_LMSG], hdata[MAX_LMSG];
+	changes_t chgs;
 
-	FILE *fpt, *fpm, *fpc, *fpo;
+	read_input(&graph, &msgs, &chgs, argv);
+
+	FILE *fpo;
 	fpo = fopen("output.txt", "w");
-	fpt = fopen(argv[1], "r");
-	fpm = fopen(argv[2], "r");
-	fpc = fopen(argv[3], "r");
-	if (!fpt || !fpm || !fpc || !fpo) {
-		printf("Error: cannot open file\n");
-		return -1;
-	}
-
-
-	while (1) {
-		if (!fgets(buf, MAX_LMSG, fpt)) break;
-		sscanf(buf, "%d %d %d", &src, &dest, &cost);
-		graph.add_edge(src, dest, cost);
-	}
-
-	while (1) {
-		if (!fgets(buf, MAX_LMSG, fpm)) break;
-		sscanf(buf, "%d %d %s", &msgs.entries[msgs.num].src,
-			&msgs.entries[msgs.num].dest, hdata);
-		char* hptr = strstr(buf, hdata);
-		strcpy(msgs.entries[msgs.num].data, hptr);
-		msgs.num++;
+	if (!fpo) {
+		printf("Error: cannot open output file\n");
+		exit(1);
 	}
 
 	graph.converge_and_report(fpo, msgs);
 
-	while (1) {
-		if (!fgets(buf, MAX_LMSG, fpc)) break;
-		sscanf(buf, "%d %d %d", &src, &dest, &cost);
-		graph.add_edge(src, dest, cost);
+	for (int i = 0; i < chgs.num; i++) {
+		graph.add_edge(
+			chgs.entries[i].src,
+			chgs.entries[i].dest,
+			chgs.entries[i].cost);
 		graph.clear_routing_info();
 		graph.converge_and_report(fpo, msgs);
 	}
 
-
-	fclose(fpt);
-	fclose(fpm);
-	fclose(fpc);
 	fclose(fpo);
 	return 0;
 }
