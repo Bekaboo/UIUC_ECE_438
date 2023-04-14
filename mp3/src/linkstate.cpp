@@ -1,7 +1,7 @@
 #include "routing.hpp"
 
 
-class GraphDV: public Graph {
+class GraphLS: public Graph {
 private:
 	void dijkstra(int root);
 	void dijkstra_all();
@@ -10,7 +10,7 @@ public:
 };
 
 
-void GraphDV::dijkstra(int root) {
+void GraphLS::dijkstra(int root) {
 
 	// memoization init
 	dist[root][root] = 0;
@@ -57,14 +57,14 @@ void GraphDV::dijkstra(int root) {
 }
 
 
-void GraphDV::dijkstra_all() {
+void GraphLS::dijkstra_all() {
 	for (int i = 0; i < MAX_NNODE; i++) {
 		if (nodes[i]) dijkstra(i);
 	}
 }
 
 
-void GraphDV::converge_and_report(FILE* fp, messages_t msgs) {
+void GraphLS::converge_and_report(FILE* fp, messages_t msgs) {
 	dijkstra_all();
 	write_rt(fp);
 	for (int i = 0; i < msgs.num; i++) {
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 
-	GraphDV graph;
+	GraphLS graph;
 	messages_t msgs;
 	changes_t chgs;
 
