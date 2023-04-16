@@ -40,10 +40,14 @@ void GraphLS::dijkstra(int root) {
 		visited[min_idx] = true;
 		for (int j = 0; j < MAX_NNODE; j++) {
 			if (nodes[j] && !visited[j]
-				&& adj[min_idx][j] != DISCONNECTED
-				&& dist[root][min_idx] + adj[min_idx][j] < dist[root][j]) {
-				dist[root][j] = dist[root][min_idx] + adj[min_idx][j];
-				mst[j] = min_idx;
+				&& adj[min_idx][j] != DISCONNECTED) {
+				int alt = dist[root][min_idx] + adj[min_idx][j];
+				// Tie-breaking: prefer smaller node ID
+				if ((alt < dist[root][j]) ||
+					(alt == dist[root][j] && min_idx < mst[j])) {
+					dist[root][j] = alt;
+					mst[j] = min_idx;
+				}
 			}
 		}
 	}
