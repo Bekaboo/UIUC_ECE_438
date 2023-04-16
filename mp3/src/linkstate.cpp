@@ -1,176 +1,127 @@
+#include "routing.hpp"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_NNODE 256
-#define MAX_NMSG  1024
-#define MAX_LMSG  128
-#define DISCONNECTED -999
-#define INF 0x7FFFFFFF
-
-
-typedef struct message_t {
-	int src;
-	int dest;
-	char data[MAX_LMSG];
-} message_t;
-
-
-typedef struct messages_t {
-	int num;
-	message_t entries[MAX_NMSG];
-} messages_t;
-
-
-class Graph {
-
-
+class GraphDV : public Graph {
 private:
-	int nnode;
-	bool nodes[MAX_NNODE];
-	int adj[MAX_NNODE][MAX_NNODE];
-	int next[MAX_NNODE][MAX_NNODE];
-	int dist[MAX_NNODE][MAX_NNODE];
-
-
-	void dijkstra(int root) {
-
-		// memoization init
-		dist[root][root] = 0;
-		int mst[MAX_NNODE];
-		bool visited[MAX_NNODE];
-		for (int i = 0; i < MAX_NNODE; i++) {
-			mst[i] = DISCONNECTED;
-			visited[i] = false;
-		}
-
-		for (int i = 0; i < nnode; i++) {
-
-			// find node closest to visited set
-			int min = INF, min_idx;
-			for (int j = 0; j < MAX_NNODE; j++) {
-				if (nodes[j] && !visited[j] && dist[root][j] < min) {
-					min = dist[root][j];
-					min_idx = j;
-				}
-			}
-
-			// visit and relax edges
-			visited[min_idx] = true;
-			for (int j = 0; j < MAX_NNODE; j++) {
-				if (nodes[j] && !visited[j]
-					&& adj[min_idx][j] != DISCONNECTED
-					&& dist[root][min_idx] + adj[min_idx][j] < dist[root][j]) {
-					dist[root][j] = dist[root][min_idx] + adj[min_idx][j];
-					mst[j] = min_idx;
-				}
-			}
-		}
-
-		// backtrack MST to construct NEXT
-		for (int i = 0; i < MAX_NNODE; i++) {
-			if (nodes[i] && i != root) {
-				int j = i;
-				while (mst[j] != root) {
-					j = mst[j];
-				}
-				next[root][i] = j;
-			}
-		}
-	}
-
-
-	void dijkstra_all() {
-		for (int i = 0; i < MAX_NNODE; i++) {
-			if (nodes[i]) dijkstra(i);
-		}
-	}
-
-
-	void write_rt(FILE* fp) {
-		for (int i = 0; i < MAX_NNODE; i++) {
-			if (nodes[i]) {
-				for (int j = 0; j < MAX_NNODE; j++) {
-					if (nodes[j]) {
-						fprintf(fp, "%d %d %d\n", j, next[i][j], dist[i][j]);
-					}
-				}
-			}
-		}
-	}
-
-	void write_msg(FILE* fp, int src, int dest, char* content) {
-		fprintf(fp, "from %d to %d cost %d hops ", src, dest, dist[src][dest]);
-		int pos = src;
-		while (pos != dest) {
-			fprintf(fp, "%d ", pos);
-			pos = next[pos][dest];
-		}
-		fprintf(fp, "message %s", content);
-	}
-
+	bool bellman_ford(int root, int neighbor);
+	void bellman_ford_all();
 
 public:
-	Graph() {
-		for (int i = 0; i < MAX_NNODE; i++) {
-			nodes[i] = false;
-			for (int j = 0; j < MAX_NNODE; j++) {
-				if (i == j) adj[i][j] = 0;
-				else adj[i][j] = DISCONNECTED;
-			}
-		}
-		reset();
-	}
-
-
-	void reset() {
-		for (int i = 0; i < MAX_NNODE; i++) {
-			for (int j = 0; j < MAX_NNODE; j++) {
-				if (i == j) {
-					next[i][j] = i;
-					dist[i][j] = 0;
-				} else {
-					next[i][j] = DISCONNECTED;
-					dist[i][j] = INF;
-				}
-			}
-		}
-	}
-
-
-	void add_edge(int src, int dest, int cost) {
-		if (!nodes[src]) {
-			nodes[src] = true;
-			nnode++;
-		}
-		if (!nodes[dest]) {
-			nodes[dest] = true;
-			nnode++;
-		}
-		adj[src][dest] = cost;
-		adj[dest][src] = cost;
-	}
-
-
-	void converge_and_report(FILE* fp, messages_t msgs) {
-		dijkstra_all();
-		write_rt(fp);
-		for (int i = 0; i < msgs.num; i++) {
-			write_msg(fp, msgs.entries[i].src,
-				msgs.entries[i].dest, msgs.entries[i].data);
-		}
-	}
+	GraphDV();
+	bool signal[MAX_NNODE][MAX_NNODE]; // signal sent to notify an update
+	void converge_and_report(FILE *fp, messages_t msgs);
 };
 
+GraphDV::GraphDV() {
+	for (int i = 0; i < MAX_NNODE; i++) {
+		for (int j = 0; j < MAX_NNODE; j++) {
+			signal[i][j] = false;
+		}
+	}
+}
 
-int main(int argc, char** argv) {
+/*
+ * Bellman-Ford algorithm to update the shortest distance from root
+ * to other nodes using the distance vector of the neighbor
+ *
+ * Input: int root - root node
+ *        int neighbor - neighbor node
+ * Output: bool updated - true if root has updated its routing table
+ * Side effects: updates dist vector of root
+ * */
+bool GraphDV::bellman_ford(int root, int neighbor) {
+	bool updated = false;	// If root has updated its routing table
 
+	/* Using Bellman-Ford equation to update min dist from root
+	 * to other nodes */
+	for (int dest = 0; dest < MAX_NNODE; dest++) {
+		if (!nodes[dest] || root == dest || neighbor == dest) continue;
+		int alternative_dist
+			= dist[neighbor][dest] == INF
+				? INF : dist[neighbor][dest] + adj[root][neighbor];
+		if (alternative_dist < dist[root][dest] ||
+				(alternative_dist == dist[root][dest] &&
+				 neighbor < next[root][dest])) {
+			dist[root][dest] = alternative_dist;
+			next[root][dest] = neighbor;
+			updated = true;
+		}
+	}
+
+	/* Send signal to all neighbors */
+	if (updated) {
+		for (int neighbor = 0; neighbor < MAX_NNODE; neighbor++) {
+			if (!nodes[neighbor] || root == neighbor ||
+					adj[root][neighbor] == DISCONNECTED)
+				continue;
+			signal[root][neighbor] = true;
+		}
+	}
+
+	return updated;
+}
+
+/*
+ * Run Bellman-Ford algorithm on all nodes until no update is needed
+ *
+ * Input: void
+ * Output: void
+ * Side effects: updates dist and next vectors
+ * */
+void GraphDV::bellman_ford_all() {
+	/* Initialize matrix 'dist', 'next', and 'signal' */
+	for (int node = 0; node < MAX_NNODE; node++) {
+		if (!nodes[node]) continue;
+		for (int neighbor = 0; neighbor < MAX_NNODE; neighbor++) {
+			if (node == neighbor || adj[node][neighbor] == DISCONNECTED)
+				continue;
+			dist[node][neighbor] = adj[node][neighbor];
+			next[node][neighbor] = neighbor;
+			signal[node][neighbor] = true;
+		}
+	}
+
+	/* Keep updating the network until we walked all nodes without update */
+	int last_updated = 0;
+	int current = 0;
+	do {
+		/* Check for an incoming signals */
+		for (int sigsender = 0; sigsender < MAX_NNODE; sigsender++) {
+			if (signal[sigsender][current]) {
+				last_updated = bellman_ford(current, sigsender) ? current : last_updated;
+				signal[sigsender][current] = false;
+			}
+		}
+		current = (current + 1) % MAX_NNODE;
+	} while (last_updated != current);
+}
+
+/*
+ * Run Bellman-Ford algorithm on all nodes until no update is needed
+ * and write the routing table to file
+ *
+ * Input: FILE* fp - file pointer to output file
+ * Output: void
+ * Side effects: updates dist and next vectors
+ * */
+void GraphDV::converge_and_report(FILE* fp, messages_t msgs) {
+	bellman_ford_all();
+	write_rt(fp);
+	for (int i = 0; i < msgs.num; i++) {
+		write_msg(fp, msgs.entries[i].src,
+			msgs.entries[i].dest, msgs.entries[i].data);
+	}
+}
+
+int main(int argc, char **argv) {
 	if (argc != 4) {
-		printf("Usage: ./distvec topofile messagefile changesfile\n");
+		printf("Usage: ./linkstate topofile messagefile changesfile\n");
 		return -1;
 	}
 
-	Graph graph;
+	GraphDV graph;
 	messages_t msgs;
 	int src, dest, cost;
 	char buf[MAX_LMSG], hdata[MAX_LMSG];
@@ -218,4 +169,3 @@ int main(int argc, char** argv) {
 	fclose(fpo);
 	return 0;
 }
-
