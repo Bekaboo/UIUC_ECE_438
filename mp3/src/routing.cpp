@@ -78,16 +78,20 @@ void read_input(Graph* graph, messages_t* msgs, changes_t* chgs, char** argv) {
 	}
 
 	int src, dest, cost;
-	char buf[MAX_LLINE], hdata[MAX_LLINE];
+	char buf[MAX_LLINE], hdata[MAX_LLINE], *first;
 
 	while (1) {
-		if (!fgets(buf, MAX_LLINE, fpt)) break;
+		first = fgets(buf, MAX_LLINE, fpt);
+		if (!first) break;
+		if (*first == '\n') continue;
 		sscanf(buf, "%d%d%d", &src, &dest, &cost);
 		graph->add_edge(src, dest, cost);
 	}
 
 	while (1) {
-		if (!fgets(buf, MAX_LLINE, fpm)) break;
+		first = fgets(buf, MAX_LLINE, fpm);
+		if (!first) break;
+		if (*first == '\n') continue;
 		sscanf(buf, "%d%d%s",
 			&msgs->entries[msgs->num].src,
 			&msgs->entries[msgs->num].dest,
@@ -98,7 +102,9 @@ void read_input(Graph* graph, messages_t* msgs, changes_t* chgs, char** argv) {
 	}
 
 	while (1) {
-		if (!fgets(buf, MAX_LLINE, fpc)) break;
+		first = fgets(buf, MAX_LLINE, fpc);
+		if (!first) break;
+		if (*first == '\n') continue;
 		sscanf(buf, "%d%d%d",
 			&chgs->entries[chgs->num].src,
 			&chgs->entries[chgs->num].dest,
