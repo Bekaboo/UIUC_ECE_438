@@ -23,11 +23,6 @@ Graph::Graph(messages_t* msgs, changes_t* chgs, char** argv) {
 	}
 	clear_routing_info();
 	read_input(msgs, chgs, argv);
-	for (int node = 1; node <= nnode; node++) {
-		for (int dest = 1; dest <= nnode; dest++) {
-			dist[node][dest] = adj[node][dest];
-		}
-	}
 }
 
 
