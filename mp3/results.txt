@@ -9,19 +9,19 @@ test results:
  Changes to topology in MP instructions, 1 path unreachable succeeded!
 -5:  Multiple changes to topology in MP instructions failed
 -5:  8 node topology failed
--10:  DV: Simple topology has an error
--5:  DV: Two paths with equal costs test failed. Tie breaker applied?
--5:  DV: Path change to unreachable failed
--5:  DV: Link addition failed. Tie breaker applied?
--5:  DV: Topology in MP instructions failed
--5:  DV: Changes to topology in MP instructions failed
--5:  DV: Changes to topology in MP instructions, 1 path unreachable failed
--5:  DV: Multiple changes to topology in MP instructions failed
--5:  DV: 8 node topology failed
+ DV: Simple topology succeeded!
+ DV: Two paths with equal costs succeeded!
+ DV: Path change to unreachable succeeded!
+ DV: Link addition succeeded!
+ DV: Topology in MP instructions succeeded!
+ DV: Changes to topology in MP instructions succeeded!
+ DV: Changes to topology in MP instructions, 1 path unreachable succeeded!
+ DV: Multiple changes to topology in MP instructions succeeded!
+ DV: 8 node topology succeeded!
 ====================
 
-version:4
-score: 35/100
-all-time best score (your current grade): 35/100
+version:5
+score: 85/100
+all-time best score (your current grade): 85/100
 
 
