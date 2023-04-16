@@ -39,8 +39,8 @@ void GraphDV::bellman_ford(int root, int neighbor) {
 	for (int dest = 0; dest < nnode; dest++) {
 		int alternative_dist = adj[root][neighbor] + dist[neighbor][dest];
 		if (alternative_dist < dist[root][neighbor] ||
-				alternative_dist == dist[root][neighbor] &&
-				neighbor < next[root][dest]) {
+				(alternative_dist == dist[root][neighbor] &&
+				 neighbor < next[root][dest])) {
 			dist[root][dest] = alternative_dist;
 			next[root][dest] = neighbor;
 			updated = true;
