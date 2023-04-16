@@ -2,11 +2,11 @@ test results:
 
  Simple topology succeeded!
 -5:  Two paths with equal costs test failed. Tie breaker applied?
--5:  Path change to unreachable did not terminate in 5s
+ Path change to unreachable succeeded!
  Link addition succeeded!
  Topology in MP instructions succeeded!
  Changes to topology in MP instructions succeeded!
--5:  Changes to topology in MP instructions, 1 path unreachable did not terminate in 5s
+ Changes to topology in MP instructions, 1 path unreachable succeeded!
 -5:  Multiple changes to topology in MP instructions failed
 -5:  8 node topology failed
 -10:  DV: Simple topology has an error
@@ -20,8 +20,8 @@ test results:
 -5:  DV: 8 node topology failed
 ====================
 
-version:2
-score: 25/100
+version:3
+score: 35/100
 all-time best score (your current grade): 35/100
 
 
