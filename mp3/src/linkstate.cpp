@@ -6,15 +6,9 @@ private:
 	void dijkstra(int root);
 	void dijkstra_all();
 public:
-	GraphLS();
-	GraphLS(messages_t* msgs, changes_t* chgs, char** argv);
 	void converge_and_report(FILE* fp, messages_t msgs);
 };
 
-GraphLS::GraphLS() {}
-
-GraphLS::GraphLS(messages_t *msgs, changes_t *chgs, char **argv)
-	: Graph(msgs, chgs, argv) {}
 
 void GraphLS::dijkstra(int root) {
 
@@ -92,9 +86,11 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 
+	GraphLS graph;
 	messages_t msgs;
 	changes_t chgs;
-	GraphLS graph = GraphLS(&msgs, &chgs, argv);
+
+	read_input(&graph, &msgs, &chgs, argv);
 
 	FILE *fpo;
 	fpo = fopen("output.txt", "w");
