@@ -32,6 +32,10 @@ void GraphLS::dijkstra(int root) {
 			}
 		}
 
+		// min_idx retains value from last iteration,
+		// which indicates that remaining nodes are unreachable!
+		if (visited[min_idx]) break;
+
 		// visit and relax edges
 		visited[min_idx] = true;
 		for (int j = 0; j < MAX_NNODE; j++) {
@@ -47,6 +51,7 @@ void GraphLS::dijkstra(int root) {
 	// backtrack MST to construct NEXT
 	for (int i = 0; i < MAX_NNODE; i++) {
 		if (nodes[i] && i != root) {
+			if (!visited[i]) continue;	// unreachable
 			int j = i;
 			while (mst[j] != root) {
 				j = mst[j];
