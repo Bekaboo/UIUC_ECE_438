@@ -60,6 +60,7 @@ void Graph::write_rt(FILE* fp) {
 		if (nodes[i]) {
 			for (int j = 0; j < MAX_NNODE; j++) {
 				if (nodes[j]) {
+					if (dist[i][j] == INF) continue;	// unreachable
 					fprintf(fp, "%d %d %d\n", j, next[i][j], dist[i][j]);
 				}
 			}
@@ -69,6 +70,10 @@ void Graph::write_rt(FILE* fp) {
 
 
 void Graph::write_msg(FILE* fp, int src, int dest, char* content) {
+	if (dist[src][dest] == INF) {
+		fprintf(fp, "from %d to %d cost infinite hops unreachable message %s", src, dest, content);
+		return;
+	}
 	fprintf(fp, "from %d to %d cost %d hops ", src, dest, dist[src][dest]);
 	int pos = src;
 	while (pos != dest) {
