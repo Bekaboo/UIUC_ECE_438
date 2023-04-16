@@ -46,10 +46,12 @@ public:
 	int dist[MAX_NNODE][MAX_NNODE]; // minimum distance from i to j
 
 	Graph();
+	Graph(messages_t* msgs, changes_t* chgs, char** argv);
 	void clear_routing_info();
 	void add_edge(int src, int dest, int cost);
 	void write_rt(FILE* fp);
 	void write_msg(FILE* fp, int src, int dest, char* content);
+	void read_input(messages_t* msgs, changes_t* chgs, char** argv);
 };
 
 

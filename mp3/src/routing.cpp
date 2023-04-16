@@ -13,6 +13,24 @@ Graph::Graph() {
 }
 
 
+Graph::Graph(messages_t* msgs, changes_t* chgs, char** argv) {
+	for (int i = 0; i < MAX_NNODE; i++) {
+		nodes[i] = false;
+		for (int j = 0; j < MAX_NNODE; j++) {
+			if (i == j) adj[i][j] = 0;
+			else adj[i][j] = DISCONNECTED;
+		}
+	}
+	clear_routing_info();
+	read_input(msgs, chgs, argv);
+	for (int node = 1; node <= nnode; node++) {
+		for (int dest = 1; dest <= nnode; dest++) {
+			dist[node][dest] = adj[node][dest];
+		}
+	}
+}
+
+
 void Graph::clear_routing_info() {
 	for (int i = 0; i < MAX_NNODE; i++) {
 		for (int j = 0; j < MAX_NNODE; j++) {
@@ -66,7 +84,7 @@ void Graph::write_msg(FILE* fp, int src, int dest, char* content) {
 }
 
 
-void read_input(Graph* graph, messages_t* msgs, changes_t* chgs, char** argv) {
+void Graph::read_input(messages_t* msgs, changes_t* chgs, char** argv) {
 
 	FILE *fpt, *fpm, *fpc;
 	fpt = fopen(argv[1], "r");
@@ -83,7 +101,7 @@ void read_input(Graph* graph, messages_t* msgs, changes_t* chgs, char** argv) {
 	while (1) {
 		if (!fgets(buf, MAX_LLINE, fpt)) break;
 		sscanf(buf, "%d%d%d", &src, &dest, &cost);
-		graph->add_edge(src, dest, cost);
+		add_edge(src, dest, cost);
 	}
 
 	while (1) {
