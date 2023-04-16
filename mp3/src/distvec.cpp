@@ -5,7 +5,7 @@
 
 class GraphDV : public Graph {
 private:
-	void bellman_ford(int root, int neighbor);
+	bool bellman_ford(int root, int neighbor);
 	void bellman_ford_all();
 
 public:
@@ -28,19 +28,21 @@ GraphDV::GraphDV() {
  *
  * Input: int root - root node
  *        int neighbor - neighbor node
- * Output: void
+ * Output: bool updated - true if root has updated its routing table
  * Side effects: updates dist vector of root
  * */
-void GraphDV::bellman_ford(int root, int neighbor) {
+bool GraphDV::bellman_ford(int root, int neighbor) {
 	bool updated = false;	// If root has updated its routing table
 
 	/* Using Bellman-Ford equation to update min dist from root
 	 * to other nodes */
 	for (int dest = 0; dest < MAX_NNODE; dest++) {
-		if (!nodes[dest] || root == dest) continue;
-		int alternative_dist = adj[root][neighbor] + dist[neighbor][dest];
-		if (alternative_dist < dist[root][neighbor] ||
-				(alternative_dist == dist[root][neighbor] &&
+		if (!nodes[dest] || root == dest || neighbor == dest) continue;
+		int alternative_dist
+			= dist[neighbor][dest] == INF
+				? INF : dist[neighbor][dest] + adj[root][neighbor];
+		if (alternative_dist < dist[root][dest] ||
+				(alternative_dist == dist[root][dest] &&
 				 neighbor < next[root][dest])) {
 			dist[root][dest] = alternative_dist;
 			next[root][dest] = neighbor;
@@ -51,11 +53,14 @@ void GraphDV::bellman_ford(int root, int neighbor) {
 	/* Send signal to all neighbors */
 	if (updated) {
 		for (int neighbor = 0; neighbor < MAX_NNODE; neighbor++) {
-			if (root == neighbor || adj[root][neighbor] == DISCONNECTED)
+			if (!nodes[neighbor] || root == neighbor ||
+					adj[root][neighbor] == DISCONNECTED)
 				continue;
 			signal[root][neighbor] = true;
 		}
 	}
+
+	return updated;
 }
 
 /*
@@ -85,8 +90,8 @@ void GraphDV::bellman_ford_all() {
 		/* Check for an incoming signals */
 		for (int sigsender = 0; sigsender < MAX_NNODE; sigsender++) {
 			if (signal[sigsender][current]) {
-				bellman_ford(current, sigsender);
-				last_updated = current;
+				last_updated = bellman_ford(current, sigsender) ? current : last_updated;
+				signal[sigsender][current] = false;
 			}
 		}
 		current = (current + 1) % MAX_NNODE;
